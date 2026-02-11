@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <data>
+        <record id="account_move_form_inherit_views" model="ir.ui.view">
+            <field name="name">account_move_form_inherit_views</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//button[@name='action_invoice_sent']" position="after">
+                        
+                    <button name="get_facturacion_digital"
+                            type="object"
+                            string="Factura Digital"
+                            class="oe_highlight"
+                            invisible="aplicar_fdigital != True or state != 'posted' or factura_enviada == True or statusfactura == 'Anulada'"
+                    />
+                    
+                    <button name="re_facturacion_digital"
+                        type="object"
+                        string="Re-Enviar F. Digital"
+                        class="oe_highlight"
+                        invisible="factura_enviada == False or state == 'draft'"
+                    /> 
+                </xpath>
+
+                <xpath expr="//field[@name='nro_ctrl']" position="replace">
+                    <field name="nro_ctrl" string="Número de Control" force_save="1" required="move_type in ('out_invoice', 'out_refund', 'out_receipt','in_invoice', 'in_refund', 'in_receipt') and not maq_fiscal_p and aplicar_fdigital != True" readonly="state not in ['draft'] or aplicar_fdigital == True" invisible="move_type not in ('out_invoice', 'out_refund', 'out_receipt','in_invoice', 'in_refund', 'in_receipt')" context="{'res_partner_search_mode': 'supplier'}"/>
+                </xpath>
+
+                <xpath expr="//notebook/page[@name='other_info']" position="after">
+                    <page id="facturacion_digital" string="Facturación Digital" name="factura_digital" invisible="aplicar_fdigital != True">
+                        <group>
+                            <group name="status_factura" string="Status Factura">
+                                <field name="aplicar_fdigital" invisible="1"/>
+                                <field name="factura_enviada" string="Factura Enviado" invisible="1"/>
+                                <field name="statusfactura" invisible="1"/>
+                                <field name="fnoenviada" style="color:Red;" invisible="statusfactura != 'No Enviada'"/>
+                                <field name="fenviada" style="color:Green;" invisible="statusfactura != 'Enviada'" />
+                                <field name="fanulada" style="color:Orange;" invisible="statusfactura != 'Anulada'" />
+                                <field name="urlfactura" string="URL Factura"  widget="url" />
+                            </group>
+                            <group name="reenvio_de_correo" string="Reenvío de Correo">
+                                <field name="correo_adicional" string="Correo Adicional" readonly="statusfactura == 'Anulada'" />
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+
+                <xpath expr="//button[@name='button_draft']" position="replace">
+                    <button name="button_draft" string="Reestablecer a Borrador" type="object" groups="account.group_account_invoice" invisible="show_reset_to_draft_button == False or statusfactura == 'Anulada'" data-hotkey="q"/>
+                </xpath>
+
+            </field>
+        </record>
+
+        <record id="smart_facturacion_digital_nro_ctrl" model="ir.ui.view">
+            <field name="name">smart.facturacion.digital.nro_ctrl</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="l10n_ve_full.extra_account_move_venezuela"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//field[@name='nro_ctrl']" position="replace">
+                    <field name="nro_ctrl" string="Número de Control" force_save="1" required="move_type in ('out_invoice', 'out_refund', 'out_receipt','in_invoice', 'in_refund', 'in_receipt') and not maq_fiscal_p and aplicar_fdigital != True" readonly="aplicar_fdigital == True" invisible="move_type not in ('out_invoice', 'out_refund', 'out_receipt','in_invoice', 'in_refund', 'in_receipt')" context="{'res_partner_search_mode': 'supplier'}"/>
+                </xpath>
+
+
+            </field>
+        </record>
+
+    </data>
+</odoo>

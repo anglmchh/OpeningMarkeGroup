@@ -1,0 +1,20 @@
+<odoo>
+    <data noupdate="1">
+        <record id="ir_cron_actualizar_tasa_bcv" model="ir.cron">
+            <field name="name">Actualizar Tasa BCV (USD/EUR) y Productos</field>
+            <field name="model_id" ref="base.model_res_currency"/>
+            <field name="state">code</field>
+            <field name="code">model.actualizar_tasa_bcv()</field>
+            
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            
+            <field name="numbercall">-1</field>
+            
+            <field name="doall">True</field>
+            <field name="active">True</field>
+
+            <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=2, minute=0, second=0)"/>
+        </record>
+    </data>
+</odoo>

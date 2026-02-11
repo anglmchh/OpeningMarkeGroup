@@ -1,0 +1,78 @@
+<odoo>
+    <template id="report_invoice_template">
+        <t t-name="forma_libre.report_invoice_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="doc">
+                    <main style="font-family: 'Open Sans', sans-serif;">
+                        
+                        <!-- Datos del Cliente y Factura -->
+                        <table style="width: 100%; margin-bottom: 5px;">
+                            <tr>
+                                <td style="width: 50%; vertical-align: top; padding-right: 10px; font-size: 9px;">
+                                    <p><strong>Cliente:</strong> <t t-esc="doc.partner_id.name or ''"/></p>
+                                    <p><strong>R.I.F:</strong> <t t-esc="doc.partner_id.vat or ''"/></p>
+                                    <p><strong>Direccion:</strong> <t t-esc="doc.partner_id.contact_address or ''"/></p>
+                                    <p><strong>Telefono:</strong> <t t-esc="doc.partner_id.phone or ''"/></p>
+                                </td>
+                                <td style="width: 50%; text-align: right; vertical-align: top; font-size: 9px;">
+                                    <p><strong>Nro. Factura:</strong> <t t-esc="doc.name or ''"/></p>
+                                    <p><strong>Fecha:</strong> <t t-esc="doc.invoice_date or ''"/></p>
+                                    <p><strong>Termino de Pago:</strong> <t t-esc="doc.invoice_payment_term_id.name or ''"/></p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Tabla de Productos -->
+                        <table class="table table-sm" style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Codigo</th>
+                                    <th style="text-align: left;">Producto</th>
+                                    <th style="text-align: right;">Cantidad</th>
+                                    <th style="text-align: right;">Precio</th>
+                                    <th style="text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.invoice_line_ids" t-as="line">
+                                    <td style="border: none; text-align: left; font-size: 9px;">
+                                        <t t-esc="line.product_id.default_code or ''"/>
+                                    </td>
+                                    <td style="border: none; text-align: left; font-size: 9px;">
+                                        <t t-esc="line.product_id.name or ''"/>
+                                    </td>
+                                    <td style="border: none; text-align: right; font-size: 9px;">
+                                        <t t-esc="'%0.2f' % (line.quantity or 0.0)"/>
+                                    </td>
+                                    <td style="border: none; text-align: right; font-size: 9px;">
+                                        <t t-esc="'%0.2f' % (line.price_unit_bs or 0.0)"/>
+                                    </td>
+                                    <td style="border: none; text-align: right; font-size: 9px;">
+                                        <t t-esc="'%0.2f' % ((line.quantity or 0.0) * (line.price_unit_bs or 0.0))"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Términos y Condiciones (Izquierda) -->
+                        <div style="position: fixed; top: 280px; left: 10px; width: 52%; font-size: 9px;">
+                            <p><strong>No se aceptan devoluciones pasado el mes de la fecha de expedicion</strong></p>
+                            <p>
+                                Segun providencia SNAT/2022/000013 de fecha 03/03/2022.
+                                <strong>IGTF 3%:</strong> <t t-esc="'%0.2f' % ((doc.amount_total_bs or 0.0) * 0.03)"/>
+                            </p>
+                        </div>
+
+                        <!-- Totales (Derecha) -->
+                        <div style="position: fixed; top: 260px; right: 10px; width: 48%; text-align: right; font-size: 9px;">
+                            <p><strong>Subtotal:</strong> <t t-esc="'%0.2f' % (doc.amount_untaxed_bs or 0.0)"/></p>
+                            <p><strong>IVA:</strong> <t t-esc="'%0.2f' % (doc.amount_tax_bs or 0.0)"/></p>
+                            <p><strong>Total:</strong> <t t-esc="'%0.2f' % (doc.amount_total_bs or 0.0)"/></p>
+                        </div>
+
+                    </main>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

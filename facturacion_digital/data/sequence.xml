@@ -1,0 +1,11 @@
+<odoo>
+    <data noupdate="1">
+        <record id="seq_factura_digital" model="ir.sequence">
+            <field name="name">Control Interno de Facturacion Digital</field>
+            <field name="code">factura.digital</field>
+            <field name="prefix">CIFD</field>
+            <field name="padding">8</field>
+            <field name="number_increment">1</field>
+        </record>
+    </data>
+</odoo>

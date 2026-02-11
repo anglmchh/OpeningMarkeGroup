@@ -1,0 +1,11 @@
+<odoo>
+    <data noupdate="1">
+        <record id="seq_nro_control" model="ir.sequence">
+            <field name="name">Secuencia Numero de Control</field>
+            <field name="code">account.move</field>
+            <field name="prefix"></field>
+            <field name="padding">8</field>
+            <field name="number_increment">1</field>
+        </record>
+    </data>
+</odoo>

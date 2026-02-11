@@ -1,0 +1,52 @@
+<odoo>
+    <data>
+        <record id="ks_global_tax_invoice_supplier_purchase_form" model="ir.ui.view">
+            <field name="name">ks.global_tax.invoice.account.move</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="////form/sheet/notebook/page[1]/group" position="after">
+                    <div class="ks_container">
+                        <field name="ks_enable_tax" invisible="1"/>
+                        <field name="ks_amount_global_tax" invisible="1"/>
+                        <field name="reversed_entry_id" invisible="1"/>
+                        <field name="trm_invoice" invisible="reversed_entry_id != True"/>
+                        <label for="ks_global_tax_rate" string="Universal Tax (%):"   invisible="ks_enable_tax != True and ks_amount_global_tax == 0"/>
+                        <field name="ks_global_tax_rate" class="oe_inline" invisible="ks_enable_tax != True and ks_amount_global_tax == 0" readonly="ks_enable_tax != True or state in ['posted', 'cancel']"/>
+
+                    </div>
+                </xpath>
+                <xpath expr="//field[@name='ref']" position="after">
+                    <field name="enable_invoice_discount" invisible="1" />
+                    <field name="type_invoice_discount"/>
+                    <field name="invoice_discount_tax" invisible="1" />
+                    <field name="invoice_discount" invisible="1" force_save="1"/>
+                    <field name="invoice_discount_percent" invisible="type_invoice_discount != 'global'"/>
+                    <field name="ks_global_tax_rate" />
+                </xpath>
+                <xpath expr="//field[@name='amount_untaxed_bs']" position="replace">
+                </xpath>
+                <xpath expr="//field[@name='amount_tax_bs']" position="before">
+                        <field name="invoice_untaxed_bs" invisible="ks_enable_tax != True and ks_amount_global_tax == 0" widget='monetary' options="{'currency_field': 'currency_id'}"/>
+                </xpath>
+                <xpath expr="//field[@name='amount_total_bs']" position="before">
+                        <field name="flete_bs" invisible="ks_enable_tax != True and ks_amount_global_tax == 0" widget='monetary' options="{'currency_field': 'currency_id'}"/>
+                </xpath>
+
+                <xpath expr="//field[@name='tax_totals']" position="after">
+                    <field name="ks_amount_global_tax" invisible="ks_enable_tax != True and ks_amount_global_tax == 0"/>
+                    <field name="flete_bs" invisible="ks_enable_tax != True and ks_amount_global_tax == 0"/>
+                    <field name="invoice_discount_view" invisible="ks_enable_tax != True and ks_amount_global_tax == 0"/>
+                </xpath>
+                <xpath expr="//field[@name='line_ids']/tree/field[@name='amount_currency']" position="after">
+                    <field name="discount_line" optional="show"/>
+                    <field name="price_unit_with_discount"  string="Valor + Desc" optional="show"/>
+                </xpath>
+                <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="after">
+                    <field name="discount_line" optional="show"/>
+                    <field name="price_unit_with_discount"  string="Valor + Desc" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

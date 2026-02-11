@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="extra_partner_dual_currency" model="ir.ui.view">
+            <field name="name">Extra partner DualCurrency</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="account_followup.res_partner_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='total_due']/.." position="inside">
+                    <field name="currency_id_dif" invisible="1"/>
+                </xpath>
+                <xpath expr="//field[@name='total_due']" position="attributes">
+                    <attribute name="options"></attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <!--   Heredar la vista account_followup.customer_statements_form_view     -->
+        <record id="extra_partner_dual_currency_customer_statements_form_view" model="ir.ui.view">
+            <field name="name">Extra partner DualCurrency customer_statements_form_view</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="account_followup.customer_statements_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='total_due']/.." position="replace">
+
+                    <group class="oe_subtotal_footer oe_right">
+                                <field name="currency_id" invisible="1"/>
+                                <field name="currency_id_dif" invisible="1"/>
+                                <field name="total_due" style="font-weight: bold; font-size: 1.2em;" widget="monetary" options="{'currency_field': 'currency_id_dif'}"/>
+                                <field name="total_overdue" style="font-weight: bold; font-size: 1.2em;" widget="monetary" options="{'currency_field': 'currency_id_dif'}"/>
+                    </group>
+                </xpath>
+                <xpath expr="//field[@name='unreconciled_aml_ids']/tree/field[@name='amount_currency']" position="after">
+                    <field name="currency_id_dif" invisible="1"/>
+                    <field name="amount_residual_usd" string="Importe Residual" widget="monetary" options="{'currency_field': 'currency_id_dif'}"/>
+                </xpath>
+                <xpath expr="//field[@name='unreconciled_aml_ids']/tree/field[@name='amount_residual_currency']" position="replace">
+
+                </xpath>
+
+            </field>
+        </record>
+    </data>
+</odoo>

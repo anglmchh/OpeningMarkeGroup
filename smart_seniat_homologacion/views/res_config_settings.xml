@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="factura_digital" model="ir.ui.view">
+            <field name="name">factura.digital</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//block[@name='default_taxes_setting_container']" position="after">
+                    <!--Factura Digital-->
+                    <h2>Facturacion Digital</h2>
+                    <div class="row mt16 o_settings_container" name="default_facturaciond_setting_container">
+                        <div class="col-12 col-lg-6 o_setting_box" id="facturacion_digital_settings">
+                            <div class="o_setting_left_pane">
+                                <field name="aplicar_fdigital" widget="upgrade_boolean"/>
+                            </div>
+                            <div class="o_setting_right_pane" name="account_facturacion_digital_right_pane">
+                                <label for="aplicar_fdigital" string="Activar Facturacion Digital"/>
+                                <div class="text-muted">
+                                    Se activara la facturacion digital
+                                </div>
+                                <div class="content-group" invisible="aplicar_fdigital == False">
+
+                                    <div class="row mt16">
+                                        <label for="url_fdigital" class="col-lg-3 o_light_label"/>
+                                        <field name="url_fdigital" required="aplicar_fdigital == True"/>
+                                    </div>
+                                    <div class="row mt16">
+                                        <label for="token_fdigital" class="col-lg-3 o_light_label"/>
+                                        <field name="token_fdigital" required="aplicar_fdigital == True"/>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

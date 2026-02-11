@@ -1,0 +1,57 @@
+<odoo>
+    <data>
+        <record id="smart_seniat_homologacion_account_move" model="ir.ui.view">
+            <field name="name">Smart Seniat Homologacion Account Move</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//header" position="inside">
+                    <button name="action_unlink_custom"
+                            type="object"
+                            string="Eliminar"
+                            class="btn-danger"
+                            invisible="state == 'posted'"
+                            confirm="¿Estás seguro que deseas eliminar esta factura?" />
+
+                    <button name="ejecutar_nota_de_debito"
+                            type="object"
+                            string="Nota de Débito"
+                            class="btn"
+                            invisible="state != 'posted' or move_type != 'out_invoice'" />
+                </xpath>
+
+                <xpath expr="//button[@name='button_draft']" position="replace">
+                    <button name="button_draft"
+                            type="object"
+                            string="Reestablecer a Borrador"
+                            data-hotkey="v"
+                            invisible="(state not in ('posted','cancel')) or (move_type in ('out_invoice', 'out_refund'))"
+                            />
+                </xpath>
+
+                <xpath expr="//label[@for='journal_id']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+
+                <xpath expr="//div[@name='journal_div']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='correlative']" position="replace">
+                    <field name="correlative"
+                           string="Número de Control"
+                           force_save="1"
+                           context="{'res_partner_search_mode': 'supplier'}"
+                           readonly="move_type in ('out_invoice', 'out_refund')"
+                           required="move_type in ('in_invoice', 'in_refund')"
+                           invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')" />
+                </xpath>
+
+                <xpath expr="//button[@name='preview_invoice']" position="replace">
+                    </xpath>
+
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <data>
+    <!-- Heredar la vista del wizard de descuento -->
+    <record id="sale_order_line_discount_wizard_form_inherit" model="ir.ui.view">
+      <field name="name">sale.order.line.discount.wizard.form.inherit</field>
+      <field name="model">sale.order.discount</field>  <!-- Modelo correcto -->
+      <field name="inherit_id" ref="sale.sale_order_line_wizard_form"/>
+      <field name="arch" type="xml">
+        <!-- Reemplazar solo el div.row -->
+        <xpath expr="//div[@class='row']" position="replace">
+          <!-- <div class="row">
+              <div class="col-sm-5 col-md-4 col-lg-4 col-4">
+                  <group>
+                      <label for="discount_amount" string="Descuento" invisible="discount_type != 'amount'"/>
+                      <field name="discount_amount" invisible="discount_type != 'amount'" nolabel="1"/>
+                      <label for="discount_percentage" string="Descuento" invisible="discount_type not in ('so_discount', 'sol_discount')"/>
+                      <field name="discount_percentage" invisible="discount_type not in ('so_discount', 'sol_discount')" widget="percentage" nolabel="1"/>
+                  </group>
+              </div>
+              <div class="col-sm-7 col-md-8 col-lg-8 col-8">
+                  <field name="discount_type" widget="radio"/>
+              </div>
+          </div> -->
+        </xpath>
+      </field>
+    </record>
+  </data>
+</odoo>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menú principal que se mostrará en el dashboard de aplicaciones -->
+    <menuitem id="menu_audit_root" name="Auditoría"
+              sequence="10" web_icon="auditlog,static/static/description/icon.png"
+              groups="auditlog.group_auditlog_user"/>
+
+    <!-- Menú para las reglas de auditoría -->
+    <menuitem id="menu_audit_rules" name="Reglas de Auditoría"
+              parent="menu_audit_root"
+              action="action_auditlog_rule_tree"
+              sequence="10"/>
+
+    <!-- Menú para los registros de auditoría -->
+    <menuitem id="menu_audit_logs" name="Registros de Auditoría"
+              parent="menu_audit_root"
+              action="action_auditlog_log_tree"
+              sequence="15"/>
+
+    <!-- Menú para las líneas de registro de auditoría -->
+    <menuitem id="menu_audit_lines" name="Líneas de Registro"
+              parent="menu_audit_root"
+              action="action_auditlog_line"
+              sequence="20"/>
+
+    <!-- Definiciones de acciones y vistas -->
+    <record model="ir.actions.act_window" id="action_auditlog_rule_tree">
+        <field name="name">Reglas de Auditoría</field>
+        <field name="res_model">auditlog.rule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_auditlog_rule_search"/>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_auditlog_log_tree">
+        <field name="name">Registros de Auditoría</field>
+        <field name="res_model">auditlog.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_auditlog_log_search"/>
+    </record>
+
+    <record model="ir.actions.act_window" id="action_auditlog_line">
+        <field name="name">Líneas de Registro</field>
+        <field name="res_model">auditlog.log.line.view</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_auditlog_line_search"/>
+    </record>
+</odoo>

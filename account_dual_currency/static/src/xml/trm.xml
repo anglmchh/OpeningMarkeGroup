@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="trm_menu" owl="1">
+        <div class="new_icon">
+            <div class="icon_div">
+                <div class="toggle-icon" role="button">
+                    <div style="color: black;font-weight: 700;padding-top: 2px;">
+                        USD: <span t-esc="trm"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

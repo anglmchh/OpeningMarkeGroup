@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Coletilla en Pedido de Venta -->
+    <template id="report_saleorder_document_inherit_credit_note" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//div[@class='oe_structure']" position="inside">
+            <!-- Mensaje en el centro de la página -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; font-size: 16px; color: red;">
+                DOCUMENTO NO FISCAL
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Coletilla en Orden de Entrega -->
+    <template id="report_delivery_document_inherit_credit_note" inherit_id="stock.report_delivery_document">
+        <xpath expr="//div[@class='page']" position="inside">
+            <!-- Mensaje en el centro de la página -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; font-size: 16px; color: red;">
+                DOCUMENTO NO FISCAL
+            </div>
+        </xpath>
+    </template>
+    <!-- Coletilla en Presupuesto de Compra -->
+    <template id="report_purchasequotation_document_custom" inherit_id="purchase.report_purchasequotation_document">
+        <xpath expr="//div[@class='page']" position="inside">
+            <!-- Mensaje en el centro de la página -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; font-size: 16px; color: red;">
+                DOCUMENTO NO FISCAL
+            </div>
+        </xpath>
+    </template>
+    <!-- Coletilla en Orden de Compra -->
+    <template id="report_purchase_document_custom" inherit_id="purchase.report_purchaseorder_document">
+        <xpath expr="//div[@class='page']" position="inside">
+            <!-- Mensaje en el centro de la página -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-weight: bold; font-size: 16px; color: red;">
+                DOCUMENTO NO FISCAL
+            </div>
+        </xpath>
+    </template>
+
+    <template id="report_payment_receipt_document_custom" inherit_id="account.report_payment_receipt_document">
+        <xpath expr="//div[@class='page']" position="inside">
+            <t t-if="o.aplicar_igtf_divisa">
+                <p style="margin-top: 20px; font-size: 13px;">
+                    <t t-if="o.journal_igtf_id.currency_id.name == 'VEF' and o.tax_today">
+                        Este pago ha generado un recargo de IGTF por un importe de:
+                        <strong><span t-esc="round(o.mount_igtf * o.tax_today, 2)"/> Bs.</strong>
+                        sobre una Base Imponible de:
+                        <strong><span t-esc="round(o.amount * o.tax_today, 2)"/> Bs.</strong>.
+                    </t>
+                    <t t-else="1">
+                        Este pago ha generado un recargo de IGTF por un importe de:
+                        <strong><span t-field="o.mount_igtf" t-options="{'widget': 'monetary', 'display_currency': o.currency_id, 'noSymbol': True}"/></strong>
+                        sobre una Base Imponible de:
+                        <strong><span t-field="o.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id, 'noSymbol': True}"/></strong>.
+                    </t>
+                </p>
+            </t>
+            <p style="margin-top: 15px; text-align: center; font-weight: bold; font-size: 17px;">
+                DOCUMENTO NO FISCAL
+            </p>
+        </xpath>
+    </template>
+
+</odoo>

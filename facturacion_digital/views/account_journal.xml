@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+    <data>
+        <record id="facturacion_digital_journal" model="ir.ui.view">
+            <field name="name">facturacion.digital.journal</field>
+            <field name="model">account.journal</field>
+            <field name="inherit_id" ref="account.view_account_journal_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='type']" position="after">
+                    <field name="visible_facturad" widget="upgrade_boolean" invisible="1"/>
+                    <field name="facturaciond" widget="upgrade_boolean" string="Activar Factura Digital" invisible="type not in ['sale'] or visible_facturad == False" />
+                </xpath>
+
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="ir_cron_fiscal_lock_check" model="ir.cron">
+            <field name="name">Verificación Diaria de Bloqueo Fiscal</field>
+            <field name="model_id" ref="model_account_fiscal_lock_checker"/>
+            <field name="state">code</field>
+            <field name="code">model.check_fiscal_lock_cron()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="user_id" ref="base.user_root"/>  <!-- Usuario Administrador -->
+            <field name="active">True</field>
+            <field name="priority">1</field>
+            <field name="numbercall">-1</field>  <!-- Ejecución ilimitada -->
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<template>
+    <t t-name="DualCurrencyFilters"
+       t-inherit="account_reports.AccountReportFiltersCustomizable"  t-inherit-mode="extension" owl="1" >
+       <xpath expr="//div[@id='filter_extra_options']/.." position="inside">
+            <div id="search_template_currency_dif">
+                <!--<t t-call="account_dual_currency.search_template_currency_dif_choose"/>-->
+                <Dropdown togglerClass="'btn btn-secondary'">
+                    <t t-set-slot="toggler">
+                        <i class="fa fa-money me-1"/>
+                        Moneda:
+                        <span style="color: red;">
+                            <t t-esc="controller.options.currency_dif"/>
+                        </span>
+                    </t>
+                    <DropdownItem
+                            class="{ 'filter_date_single_today_hook': true, 'selected': (controller.options.currency_dif == controller.options.currency_id_company_name) }"
+                            onSelected="() => this.updateFilter('currency_dif', controller.options.currency_id_company_name)">
+                        <t t-esc="controller.options.currency_id_company_name"/>
+                    </DropdownItem>
+                    <DropdownItem
+                            class="{ 'filter_date_single_last_month_hook': true, 'selected': (controller.options.currency_dif == controller.options.currency_id_dif_name) }"
+                            onSelected="() => this.updateFilter('currency_dif', controller.options.currency_id_dif_name)">
+                        <t t-esc="controller.options.currency_id_dif_name"/>
+                    </DropdownItem>
+                </Dropdown>
+            </div>
+        </xpath>
+    </t>
+</template>

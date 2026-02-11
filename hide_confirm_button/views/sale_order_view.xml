@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <data>
+    <!-- Reemplaza el header completo en la vista de Pedidos de Venta -->
+    <record id="sale_order_form_custom_header" model="ir.ui.view">
+      <field name="name">sale.order.form.custom.header</field>
+      <field name="model">sale.order</field>
+      <field name="inherit_id" ref="sale.view_order_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//form/header" position="replace">
+          <header>
+                <field name="locked" invisible="1"/>
+                <field name="authorized_transaction_ids" invisible="1"/>
+                <button name="payment_action_capture" type="object" data-hotkey="shift+g" string="Capture Transaction" class="oe_highlight" invisible="not authorized_transaction_ids"/>
+                <button name="payment_action_void" type="object" string="Void Transaction" data-hotkey="shift+v" confirm="Are you sure you want to void the authorized transaction? This action can't be undone." invisible="not authorized_transaction_ids"/>
+                <!-- Fix: trigger the standard Sale advance payment wizard action using XML id instead of a hard-coded DB id -->
+                <button id="create_invoice" name="%(sale.action_view_sale_advance_payment_inv)d" string="Crear Factura" type="action" class="btn-primary" data-hotkey="q" invisible="invoice_status != 'to invoice'"/>
+                <button id="create_invoice_percentage" name="%(sale.action_view_sale_advance_payment_inv)d" string="Crear Factura" type="action" context="{'default_advance_payment_method': 'percentage'}" data-hotkey="q" invisible="invoice_status != 'no' or state != 'sale'"/>
+                <button name="action_quotation_send" id="send_by_email_primary" string="Enviar por Correo" type="object" data-hotkey="g" invisible="state != 'draft'" class="btn-primary" context="{'validate_analytic': True}"/>
+                <button name="action_quotation_send" invisible="1" id="send_proforma_primary" type="object" string="Send PRO-FORMA Invoice" class="btn-primary" groups="sale.group_proforma_sales" context="{'proforma': True, 'validate_analytic': True}"/>
+                <button name="action_confirm" id="action_confirm" data-hotkey="q" string="Confirmar" class="btn-primary" type="object" context="{'validate_analytic': True}" invisible="state != 'sent'"/>
+                <button name="action_confirm" data-hotkey="q" string="Confirmar" type="object" context="{'validate_analytic': True}" invisible="state != 'draft'"/>
+                <button name="action_quotation_send" invisible="1" id="send_proforma" type="object" string="Send PRO-FORMA Invoice" groups="sale.group_proforma_sales"  context="{'proforma': True, 'validate_analytic': True}"/>
+                <button name="action_quotation_send" id="send_by_email" string="Enviar por Correo" type="object" invisible="state not in ('sent', 'sale')" data-hotkey="g" context="{'validate_analytic': True}"/>
+
+                <!-- allow to unlock locked orders even if setting is not enabled (e.g. orders synchronized from connectors) -->
+                <button name="action_unlock" type="object" string="Desbloquear" invisible="not locked" groups="sales_team.group_sale_manager"/>
+                <button name="action_preview_sale_order" invisible="1" string="Preview" type="object" class="btn-secondary"/>
+                <button name="action_cancel" type="object" string="Cancelar" invisible="state not in ['draft', 'sent'] or not id or locked" data-hotkey="x"/>
+                <button name="action_draft" invisible="state not in ['draft', 'sent'] or not id or locked" type="object" string="Convertir a Presupuesto" data-hotkey="w"/>
+                <t groups="sale.group_auto_done_setting">
+                    <button name="action_lock" type="object" string="Bloquear" help="If the sale is locked, you can not modify it anymore. However, you will still be able to invoice or deliver." invisible="locked or state != 'sale'" groups="sales_team.group_sale_manager"/>
+                </t>
+                <field name="state" widget="statusbar" statusbar_visible="draft,sent,sale"/>
+            </header>
+        </xpath>
+      </field>
+    </record>
+    <record id="purchase_order_form_custom_header" model="ir.ui.view">
+      <field name="name">purchase.order.form.custom.header</field>
+      <field name="model">purchase.order</field>
+      <field name="inherit_id" ref="purchase.purchase_order_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//form/header" position="replace">
+          <header>
+              <button name="action_view_picking" string="Recibir Productos" class="oe_highlight" type="object" invisible="is_shipped or state not in ('purchase', 'done') or incoming_picking_count == 0" data-hotkey="y" groups="stock.group_stock_user"/>
+              <button name="action_rfq_send" invisible="state != 'draft'" string="Enviar por Correo" type="object" context="{'send_rfq':True}" class="oe_highlight" data-hotkey="g"/>
+              <button name="print_quotation" invisible="1" string="Print RFQ" type="object"  class="oe_highlight" groups="base.group_user" data-hotkey="k"/>
+              <button name="button_confirm" type="object" invisible="state != 'sent'" string="Confirmar Pedido" context="{'validate_analytic': True}" class="oe_highlight" id="bid_confirm" data-hotkey="q"/>
+              <button name="button_approve" type="object" invisible="state != 'to approve'" string="Aprobar Pedido" class="oe_highlight" groups="purchase.group_purchase_manager" data-hotkey="z"/>
+              <button name="action_create_invoice" string="Crear Factura" type="object" class="oe_highlight" context="{'create_bill':True}" invisible="state not in ('purchase', 'done') or invoice_status in ('no', 'invoiced')" data-hotkey="w"/>
+              <button name="action_rfq_send" invisible="1" string="Re-Send by Email" type="object" context="{'send_rfq':True}" data-hotkey="g"/>
+              <button name="print_quotation" string="Print RFQ" type="object" invisible="1" groups="base.group_user" data-hotkey="k"/>
+              <button name="button_confirm" type="object" invisible="state != 'draft'" context="{'validate_analytic': True}" string="Confirmar Pedido" id="draft_confirm" data-hotkey="q"/>
+              <button name="action_rfq_send" invisible="1" string="Send PO by Email" type="object" context="{'send_rfq':False}" data-hotkey="g"/>
+              <button name="confirm_reminder_mail" string="Confirmar Fecha de Recepción" type="object" invisible="1" groups="base.group_no_one" data-hotkey="o"/>
+              <button name="action_create_invoice" string="Crear Factura" type="object" context="{'create_bill':True}" invisible="state not in ('purchase', 'done') or invoice_status not in ('no', 'invoiced') or not order_line" data-hotkey="w"/>
+              <button name="button_draft" invisible="state != 'cancel'" string="Reestablecer a borrador" type="object" data-hotkey="o"/>
+              <button name="button_cancel" invisible="state not in ('draft', 'to approve', 'sent')" string="Cancelar" type="object" data-hotkey="x"/>
+              <button name="button_done" type="object" string="Bloquear" invisible="state != 'purchase'" data-hotkey="l"/>
+              <button name="button_unlock" type="object" string="Desbloquear" invisible="state != 'done'" groups="purchase.group_purchase_manager" data-hotkey="l"/>
+              <field name="state" widget="statusbar" statusbar_visible="draft,sent,purchase" readonly="1"/>
+          </header>
+        </xpath>
+      </field>
+    </record>
+  </data>
+</odoo>

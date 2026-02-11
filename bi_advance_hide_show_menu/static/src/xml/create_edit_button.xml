@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates id="template" xml:space="preserve">
+
+    <t t-inherit="base_import.ImportRecords" t-inherit-mode="extension" owl="1">
+        <xpath expr="//DropdownItem" position="replace">
+            <t t-if="hasimportmenu">
+                <DropdownItem class="'o_import_menu'" onSelected.bind="importRecords">
+            Import records
+        </DropdownItem>
+            </t>
+        </xpath>
+    </t>
+
+    <t t-inherit="web.ExportAll" t-inherit-mode="extension" owl="1">
+        <xpath expr="//DropdownItem" position="replace">
+            <t t-if="hasimportmenu">
+                <DropdownItem class="'o_export_all_menu'" onSelected.bind="onDirectExportData">
+            Export All
+        </DropdownItem>
+            </t>
+        </xpath>
+    </t>
+   
+</templates>
