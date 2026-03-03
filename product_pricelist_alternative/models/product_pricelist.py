@@ -39,22 +39,15 @@ class Pricelist(models.Model):
 
     @api.depends("is_alternative_to_pricelist_ids")
     def _compute_is_alternative_to_pricelist_count(self):
-        # groups = self.read_group(
-        #     [("alternative_pricelist_ids", "in", self.ids)],
-        #     ["alternative_pricelist_ids"],
-        #     "alternative_pricelist_ids",
-        #     lazy=False,
-        # )
-        # data = {
-        #     group["alternative_pricelist_ids"][0]: group["__count"] for group in groups
-        # }
-        result = self.env['product.pricelist']._read_group(
+        groups = self.read_group(
             [("alternative_pricelist_ids", "in", self.ids)],
             ["alternative_pricelist_ids"],
-            ["__count"]
+            "alternative_pricelist_ids",
+            lazy=False,
         )
-        # Mapeamos los resultados: {id_tarifa: cuenta}
-        data = {group[0].id: count for group, count in result}
+        data = {
+            group["alternative_pricelist_ids"][0]: group["__count"] for group in groups
+        }
         for pricelist in self:
             pricelist.is_alternative_to_pricelist_count = data.get(pricelist.id, 0)
 
@@ -76,17 +69,10 @@ class Pricelist(models.Model):
 
     def _compute_price_rule(self, products, qty, uom=None, date=False, **kwargs):
         res = super()._compute_price_rule(products, qty, uom=uom, date=date, **kwargs)
-        # for product in products:
-        #     reference_pricelist_item = self.env["product.pricelist.item"].browse(
-        #         res[product.id][1]
-        #     )
         for product in products:
-            # res[product.id] devuelve (precio, rule_id)
-            rule_id = res[product.id][1]
-            if not rule_id:
-                continue
-                
-            reference_pricelist_item = self.env["product.pricelist.item"].browse(rule_id)
+            reference_pricelist_item = self.env["product.pricelist.item"].browse(
+                res[product.id][1]
+            )
             if (
                 reference_pricelist_item.alternative_pricelist_policy
                 == "use_lower_price"
