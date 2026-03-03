@@ -76,10 +76,17 @@ class Pricelist(models.Model):
 
     def _compute_price_rule(self, products, qty, uom=None, date=False, **kwargs):
         res = super()._compute_price_rule(products, qty, uom=uom, date=date, **kwargs)
+        # for product in products:
+        #     reference_pricelist_item = self.env["product.pricelist.item"].browse(
+        #         res[product.id][1]
+        #     )
         for product in products:
-            reference_pricelist_item = self.env["product.pricelist.item"].browse(
-                res[product.id][1]
-            )
+            # res[product.id] devuelve (precio, rule_id)
+            rule_id = res[product.id][1]
+            if not rule_id:
+                continue
+                
+            reference_pricelist_item = self.env["product.pricelist.item"].browse(rule_id)
             if (
                 reference_pricelist_item.alternative_pricelist_policy
                 == "use_lower_price"
