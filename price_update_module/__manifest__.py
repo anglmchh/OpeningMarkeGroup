@@ -6,6 +6,7 @@
     'depends': ['base', 'product'],  # Asegúrate de incluir 'product'
     'data': [
         'data/cron_job.xml',
+        'views/product_pricelist_views.xml',
     ],
     'installable': True,
     'application': False,
