@@ -1,5 +1,4 @@
 from odoo import models, fields, api
-from datetime import date
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -8,7 +7,7 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
     def _set_currency_usd_id(self):
-        usd = self.env.ref('base.USD')
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
         return usd
 
     standard_price_usd = fields.Float('Costo USD', digits='Product Price', default=0.0) #new
@@ -17,23 +16,36 @@ class ProductTemplate(models.Model):
 
     @api.onchange('list_price_usd')
     def onchange_price_bs(self):
-        new_price = 0.0
-        rate = self.env['res.currency.rate'].search([
-            ('name', '<=', date.today()), ('currency_id', '=', self.currency_usd_id.id)], limit=1).inverse_company_rate
-        if rate:
-            new_price += self.list_price_usd * rate
-        else:
-            new_price += self.list_price_usd * 1
-        self.list_price = new_price
-        for item in self.product_variant_ids:
-            item.list_price = new_price
+        for product in self:
+            company = product.company_id or self.env.company
+            rate = 1.0
+            if product.currency_usd_id:
+                company_rate = self.env['res.currency.rate'].search([
+                    ('currency_id', '=', product.currency_usd_id.id),
+                    ('company_id', '=', company.id),
+                    ('name', '<=', fields.Date.today()),
+                ], order='name desc, id desc', limit=1)
+                rate = company_rate.inverse_company_rate if company_rate else 0.0
+
+                if not rate:
+                    shared_rate = self.env['res.currency.rate'].search([
+                        ('currency_id', '=', product.currency_usd_id.id),
+                        ('company_id', '=', False),
+                        ('name', '<=', fields.Date.today()),
+                    ], order='name desc, id desc', limit=1)
+                    rate = shared_rate.inverse_company_rate if shared_rate else 1.0
+
+            new_price = product.list_price_usd * rate
+            product.list_price = new_price
+            for variant in product.product_variant_ids:
+                variant.list_price = new_price
 
 
 class ProductTemplateAttributeValue(models.Model):
     _inherit = 'product.template.attribute.value'
 
     def _set_currency_usd_id(self):
-        usd = self.env.ref('base.USD')
+        usd = self.env.ref('base.USD', raise_if_not_found=False)
         return usd
 
     list_price_usd = fields.Float('Valor Precio Extra $', digits='Product Price', required=True, default=0.0)
@@ -47,9 +59,33 @@ class ProductPricelist(models.Model):
         string='Tasa Compañía',
         help='Tasa de cambio utilizada para calcular los precios.',
         compute='_compute_rate',
-        store=True,
+        store=False,
         digits=(12, 2)
     )
+
+    @api.model
+    def _get_latest_inverse_rate(self, currency, company, date_value=None):
+        if not currency:
+            return 0.0
+
+        date_value = date_value or fields.Date.today()
+        rate_model = self.env['res.currency.rate']
+
+        if company:
+            company_rate = rate_model.search([
+                ('currency_id', '=', currency.id),
+                ('company_id', '=', company.id),
+                ('name', '<=', date_value),
+            ], order='name desc, id desc', limit=1)
+            if company_rate:
+                return company_rate.inverse_company_rate
+
+        shared_rate = rate_model.search([
+            ('currency_id', '=', currency.id),
+            ('company_id', '=', False),
+            ('name', '<=', date_value),
+        ], order='name desc, id desc', limit=1)
+        return shared_rate.inverse_company_rate if shared_rate else 0.0
 
     @api.depends_context('company')
     def _compute_rate(self):
@@ -60,11 +96,12 @@ class ProductPricelist(models.Model):
             return
 
         for pricelist in self:
-            latest_rate = self.env['res.currency.rate'].search([
-                ('currency_id', '=', usd_currency.id),
-                ('name', '<=', fields.Date.today())
-            ], order="name desc", limit=1)
-            pricelist.rate = latest_rate.inverse_company_rate
+            company = pricelist.company_id or self.env.company
+            pricelist.rate = self._get_latest_inverse_rate(
+                currency=usd_currency,
+                company=company,
+                date_value=fields.Date.today(),
+            )
 
     @api.model
     def cron_update_prices_from_usd_rate(self):
@@ -75,32 +112,43 @@ class ProductPricelist(models.Model):
             return
 
         today = fields.Date.today()
-        latest_rate_global = self.env['res.currency.rate'].search([
-            ('currency_id', '=', usd_currency.id),
-            ('name', '<=', today)
-        ], order='name desc', limit=1)
-
-        if not latest_rate_global:
-            _logger.warning("No se encontró una tasa de USD global.")
-            return
-
-        global_rate = latest_rate_global.inverse_company_rate
-        _logger.info(f"Usando tasa global {global_rate}")
-
-        # Procesar todas las tarifas sin filtrar por compañía
         pricelists = self.search([])
         for pricelist in pricelists:
-            pricelist.rate = global_rate
+            company = pricelist.company_id or self.env.company
+            company_rate = self._get_latest_inverse_rate(
+                currency=usd_currency,
+                company=company,
+                date_value=today,
+            )
+
+            if not company_rate:
+                _logger.warning(
+                    "No se encontro tasa USD para tarifa %s (compania %s).",
+                    pricelist.display_name,
+                    company.display_name,
+                )
+                continue
+
+            pricelist.rate = company_rate
             for item in pricelist.item_ids:
                 if item.price_usd:
-                    item.fixed_price = item.price_usd * global_rate
+                    item.fixed_price = item.price_usd * company_rate
                     _logger.info(f"Actualizado item {item.id} con precio fijo: {item.fixed_price}")
-        
+
         # 2. Actualizar costo estándar en product.template
         products = self.env['product.template'].search([('standard_price_usd', '>', 0)])
         for product in products:
+            company = product.company_id or self.env.company
+            company_rate = self._get_latest_inverse_rate(
+                currency=usd_currency,
+                company=company,
+                date_value=today,
+            )
+            if not company_rate:
+                continue
+
             old_cost = product.standard_price
-            new_cost = product.standard_price_usd * global_rate
+            new_cost = product.standard_price_usd * company_rate
             product.standard_price = new_cost
             _logger.info(f"[Producto] {product.name} (ID: {product.id}) - Costo: {old_cost} -> {new_cost}")
         _logger.info("== FINALIZA CRON DE ACTUALIZACIÓN DE TARIFAS ==")
@@ -124,7 +172,7 @@ class ProductPricelistItem(models.Model):
                 item.fixed_price = item.price_usd * item.pricelist_id.rate
 
     def update_prices_from_rate(self):
-        for pricelist in self:
-            for item in pricelist.item_ids:
-                if item.price_usd:
-                    item.fixed_price = item.price_usd * pricelist.rate
+        for item in self:
+            rate = item.pricelist_id.rate if item.pricelist_id else 0.0
+            if item.price_usd and rate:
+                item.fixed_price = item.price_usd * rate
