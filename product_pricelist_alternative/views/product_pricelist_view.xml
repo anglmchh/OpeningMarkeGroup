@@ -37,23 +37,17 @@
                 </group>
             </group>
             <xpath
-                expr="//page[@name='pricelist_rules']/field[@name='item_ids']/tree/field[@name='product_id']"
+                expr="//page[@name='pricelist_rules']/field[@name='item_ids']/list/field[@name='product_tmpl_id']"
                 position="after"
             >
                 <field name="alternative_pricelist_policy" />
             </xpath>
             <xpath
-            expr="//page[@name='pricelist_rules']/field[@name='item_ids']/tree/field[@name='fixed_price']"
+            expr="//page[@name='pricelist_rules']/field[@name='item_ids']/list/field[@name='fixed_price']"
             position="after"
         >
             <field name="fixed_price_usd" />
         </xpath>
-            <xpath
-                expr="//page[@name='pricelist_rules']/field[@name='item_ids']/tree[@groups='product.group_sale_pricelist']/field[@name='name']"
-                position="after"
-            >
-                <field name="alternative_pricelist_policy" />
-            </xpath>
         </field>
     </record>
 </odoo>
