@@ -125,6 +125,16 @@ class AccountMoveLine(models.Model):
     def create(self, vals_list):
         """Override create para sincronizar price_unit y ref_unit al crear (2 decimales)"""
         for vals in vals_list:
+            # En algunas rutas de creación (PO -> factura) display_type puede venir vacío
+            # y en esta base se valida como obligatorio.
+            if not vals.get('display_type'):
+                if vals.get('tax_repartition_line_id'):
+                    vals['display_type'] = 'tax'
+                elif vals.get('exclude_from_invoice_tab'):
+                    vals['display_type'] = 'payment_term'
+                else:
+                    vals['display_type'] = 'product'
+
             # Obtener la tasa del move_id si existe
             move_id = vals.get('move_id')
             if move_id:
