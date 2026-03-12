@@ -62,9 +62,16 @@ class AccountMoveLine(models.Model):
             return rate
 
         for line in self:
-            self.env.context = dict(
-                self.env.context, tasa_factura=line.move_id.tax_today, calcular_dual_currency=True)
-            line.currency_rate = 1 / line.move_id.tax_today if line.move_id.tax_today > 0 else 1
+            # 1. Validar si la moneda de la línea es la misma que la base (Bolívares)
+            is_company_currency = line.currency_id == line.company_id.currency_id
+
+            if is_company_currency:
+                # Si es Bolívares, la tasa DEBE ser 1.0 para que Odoo no multiplique los impuestos
+                line.currency_rate = 1.0
+            else:
+                # Si es Dólares (Moneda extranjera), aplicamos la inversa de la tasa dual
+                tasa = line.move_id.tax_today if line.move_id else 0.0
+                line.currency_rate = (1 / tasa) if tasa > 0 else 1.0
 
         self.env.context = dict(
             self.env.context, tasa_factura=None, calcular_dual_currency=False)
