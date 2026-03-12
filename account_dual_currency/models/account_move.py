@@ -219,12 +219,34 @@ class AccountMove(models.Model):
                     rec.tax_today = new_rate
 
     def _fecha_para_tax_today(self, vals=None):
+        # Para asientos de diario usamos la fecha del asiento
         if (vals and vals.get('move_type') == 'entry') or (not vals and self.move_type == 'entry'):
             if vals:
                 return vals.get('date') or self.date
             return self.date
+
+        # Si vienen valores en vals, priorizamos invoice_date cuando esté explícito.
+        # Si no viene invoice_date en vals pero el registro ya tiene invoice_date
+        # y la fecha contable (vals['date']) es posterior, entonces usamos
+        # la invoice_date existente (caso: invoice_date < date en UI).
         if vals:
-            return vals.get('invoice_date') or vals.get('date') or self.invoice_date or self.date
+            inv_date_vals = vals.get('invoice_date')
+            acc_date_vals = vals.get('date')
+            if inv_date_vals:
+                return inv_date_vals
+            # Si ya existe invoice_date en el registro y es anterior a la fecha contable
+            # preferimos la invoice_date del registro porque la tasa depende de la fecha de la factura
+            if getattr(self, 'invoice_date', False) and acc_date_vals:
+                try:
+                    inv_date_rec = fields.Date.to_date(self.invoice_date)
+                    acc_date = fields.Date.to_date(acc_date_vals)
+                    if inv_date_rec <= acc_date:
+                        return self.invoice_date
+                except Exception:
+                    # en caso de formato raro, fallback a la lógica original
+                    pass
+            return acc_date_vals or self.invoice_date or self.date
+
         return self.invoice_date or self.date
     
     def _get_tasa_usd_by_date(self, fecha, company=None):
