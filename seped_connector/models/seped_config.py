@@ -146,8 +146,20 @@ class SepedConfig(models.Model):
         Prueba la conectividad con la API SEPED enviando un sync de un
         producto ficticio y validando la respuesta. Si recibe 401 ó 422
         la excepción ya informa al usuario.
+        También detecta la IP pública de salida del servidor para facilitar
+        la configuración del whitelist en SEPED.
         """
         self.ensure_one()
+
+        # Detectar IP pública de salida del servidor
+        outbound_ip = _('No disponible')
+        try:
+            ip_response = requests.get('https://api.ipify.org?format=json', timeout=5)
+            if ip_response.ok:
+                outbound_ip = ip_response.json().get('ip', _('No disponible'))
+        except Exception:
+            pass
+
         # Enviamos un payload mínimo para verificar autenticación/conectividad
         test_payload = {
             'codisb': self.codisb,
@@ -164,11 +176,11 @@ class SepedConfig(models.Model):
         try:
             self._make_request('POST', '/api/inventario/productos/sync', test_payload)
             msg_title = _('Conexión exitosa')
-            msg_body = _('La API SEPED respondió correctamente. La configuración es válida.')
+            msg_body = _('La API SEPED respondió correctamente. La configuración es válida.\nIP de salida del servidor: %s') % outbound_ip
             msg_type = 'success'
         except UserError as e:
             msg_title = _('Error de conexión')
-            msg_body = str(e.args[0])
+            msg_body = _('%s\n\nIP de salida del servidor: %s\n(Esta IP debe estar autorizada en SEPED)') % (str(e.args[0]), outbound_ip)
             msg_type = 'danger'
 
         return {
