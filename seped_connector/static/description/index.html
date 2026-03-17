@@ -1,0 +1,46 @@
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan">SEPED Connector</h2>
+        <h3 class="oe_slogan">Integración API SEPED — Inventario y Clientes</h3>
+        <p class="oe_mt32 text-center">
+            Módulo de integración unidireccional <strong>Odoo → SEPED</strong>.
+            Permite sincronizar el catálogo de productos, actualizar cantidades de stock
+            y enviar el padrón de clientes al sistema SEPED de forma manual o automática.
+        </p>
+    </div>
+</section>
+
+<section class="oe_container oe_dark">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan">Endpoints soportados</h2>
+        <div class="oe_span4">
+            <span class="fa fa-refresh fa-4x text-success"/>
+            <h3 class="oe_slogan">Full Sync Productos</h3>
+            <p>POST /api/inventario/productos/sync — Envía el catálogo completo de productos activos.</p>
+        </div>
+        <div class="oe_span4">
+            <span class="fa fa-cubes fa-4x text-info"/>
+            <h3 class="oe_slogan">Actualizar Stock</h3>
+            <p>PATCH /api/inventario/productos/stock — Actualiza cantidades sin reenviar el catálogo.</p>
+        </div>
+        <div class="oe_span4">
+            <span class="fa fa-users fa-4x text-warning"/>
+            <h3 class="oe_slogan">Sync Clientes</h3>
+            <p>POST /api/inventario/clientes/sync — Envía el padrón de clientes al distribuidor.</p>
+        </div>
+    </div>
+</section>
+
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan">Características</h2>
+        <ul>
+            <li>Autenticación por header <code>X-API-KEY</code></li>
+            <li>Sincronización en lotes configurable (batch_size)</li>
+            <li>Manejo de errores HTTP con mensajes descriptivos (401, 422, timeouts)</li>
+            <li>Wizard de sincronización manual desde el menú SEPED</li>
+            <li>3 Cron jobs preconfigurados (activables desde Ajustes &gt; Técnico &gt; Automatización)</li>
+            <li>Registro de última ejecución por tipo de sync</li>
+        </ul>
+    </div>
+</section>

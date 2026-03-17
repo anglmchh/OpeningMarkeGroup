@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         Vistas del modelo seped.config
+         ════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Vista Lista -->
+    <record id="seped_config_view_tree" model="ir.ui.view">
+        <field name="name">seped.config.list</field>
+        <field name="model">seped.config</field>
+        <field name="arch" type="xml">
+            <list string="Configuraciones SEPED">
+                <field name="name"/>
+                <field name="base_url"/>
+                <field name="codisb"/>
+                <field name="last_product_sync"/>
+                <field name="last_stock_update"/>
+                <field name="last_client_sync"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista Formulario -->
+    <record id="seped_config_view_form" model="ir.ui.view">
+        <field name="name">seped.config.form</field>
+        <field name="model">seped.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración SEPED">
+                <sheet>
+                    <!-- Título -->
+                    <div class="oe_title">
+                        <label for="name" string="Nombre de la Configuración"/>
+                        <h1><field name="name" placeholder="SEPED Configuración Principal"/></h1>
+                    </div>
+
+                    <!-- Estadísticas rápidas -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_test_connection"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-check-circle"
+                                string="Probar Conexión"/>
+                    </div>
+
+                    <group>
+                        <group string="Conexión API">
+                            <field name="base_url" placeholder="https://seped.openingmarketgroup.com"/>
+                            <field name="api_key" password="True" placeholder="Ingrese su API Key..."/>
+                            <field name="codisb" placeholder="Ej: 507572617"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Opciones de Sincronización">
+                            <field name="batch_size"/>
+                        </group>
+                    </group>
+
+                    <!-- Botones de sincronización -->
+                    <group string="Acciones de Sincronización">
+                        <div class="o_row">
+                            <button name="action_sync_products"
+                                    type="object"
+                                    string="Sincronizar Productos"
+                                    class="btn-primary"
+                                    icon="fa-refresh"
+                                    confirm="¿Desea enviar todos los productos activos a SEPED?"/>
+                            <button name="action_sync_stock"
+                                    type="object"
+                                    string="Actualizar Stock"
+                                    class="btn-secondary"
+                                    icon="fa-cubes"
+                                    confirm="¿Desea actualizar las cantidades de stock en SEPED?"/>
+                            <button name="action_sync_clients"
+                                    type="object"
+                                    string="Sincronizar Clientes"
+                                    class="btn-secondary"
+                                    icon="fa-users"
+                                    confirm="¿Desea enviar todos los clientes activos a SEPED?"/>
+                        </div>
+                    </group>
+
+                    <!-- Estadísticas de última sincronización -->
+                    <group string="Historial de Sincronización">
+                        <group>
+                            <field name="last_product_sync"/>
+                            <field name="last_stock_update"/>
+                        </group>
+                        <group>
+                            <field name="last_client_sync"/>
+                        </group>
+                    </group>
+
+                    <!-- Notas -->
+                    <group>
+                        <field name="note" placeholder="Notas internas sobre esta configuración..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action para abrir la configuración -->
+    <record id="action_seped_config" model="ir.actions.act_window">
+        <field name="name">Configuración SEPED</field>
+        <field name="res_model">seped.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                ¡Crea tu primera configuración SEPED!
+            </p>
+            <p>
+                Ingresa la URL base, la API Key y el código de distribuidor
+                para comenzar a sincronizar productos, stock y clientes con SEPED.
+            </p>
+        </field>
+    </record>
+
+</odoo>

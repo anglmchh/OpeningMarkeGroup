@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Formulario del Wizard -->
+    <record id="seped_sync_wizard_view_form" model="ir.ui.view">
+        <field name="name">seped.sync.wizard.form</field>
+        <field name="model">seped.sync.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Sincronización SEPED">
+                <group string="Parámetros de Sincronización">
+                    <field name="config_id" options="{'no_create': True}"/>
+                    <field name="sync_type" widget="radio"/>
+                </group>
+
+                <!-- Resultado (visible sólo cuando hay resultado) -->
+                <group string="Resultado" invisible="not result_message">
+                    <field name="result_message" nolabel="1" readonly="1"/>
+                </group>
+
+                <footer>
+                    <button name="action_execute_sync"
+                            type="object"
+                            string="Ejecutar Sincronización"
+                            class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action para abrir el wizard -->
+    <record id="action_seped_sync_wizard" model="ir.actions.act_window">
+        <field name="name">Sincronizar con SEPED</field>
+        <field name="res_model">seped.sync.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
