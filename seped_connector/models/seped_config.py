@@ -357,7 +357,7 @@ class SepedConfig(models.Model):
                 payload_items.append({
                     'codcli': partner.ref or str(partner.id),
                     'nombre': partner.name or '',
-                    'rif': partner.vat or '',
+                    'rif': partner.rif or '',
                     'direccion': direccion,
                     'ppago': ppago,
                     'usaprecio': usaprecio,
