@@ -571,6 +571,9 @@ class SepedConfig(models.Model):
         for ren in renglones:
             codprod = str(ren.get('codprod', '')).strip()
             product = Product.search([('default_code', '=', codprod)], limit=1)
+            if not product and codprod.isdigit():
+                # Fallback: buscar por ID de Odoo si codprod es numérico
+                product = Product.browse(int(codprod)).exists()
             if not product:
                 # Fallback: búsqueda por código de barras
                 barra = str(ren.get('barra', '')).strip()
