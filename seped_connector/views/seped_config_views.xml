@@ -17,6 +17,7 @@
                 <field name="last_product_sync"/>
                 <field name="last_stock_update"/>
                 <field name="last_client_sync"/>
+                <field name="last_order_fetch"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -56,6 +57,16 @@
                         </group>
                     </group>
 
+                    <group string="Configuración de Pedidos">
+                        <group>
+                            <field name="order_estado_filter"/>
+                            <field name="order_estado_procesado"/>
+                        </group>
+                        <group>
+                            <field name="order_limit"/>
+                        </group>
+                    </group>
+
                     <!-- Botones de sincronización -->
                     <group string="Acciones de Sincronización">
                         <div class="o_row">
@@ -80,6 +91,18 @@
                         </div>
                     </group>
 
+                    <!-- Pedidos SEPED -->
+                    <group string="Pedidos SEPED">
+                        <div class="o_row">
+                            <button name="action_fetch_orders"
+                                    type="object"
+                                    string="Obtener Pedidos Pendientes"
+                                    class="btn-primary"
+                                    icon="fa-download"
+                                    confirm="¿Desea consultar pedidos pendientes en SEPED e importarlos como borradores?"/>
+                        </div>
+                    </group>
+
                     <!-- Estadísticas de última sincronización -->
                     <group string="Historial de Sincronización">
                         <group>
@@ -88,6 +111,7 @@
                         </group>
                         <group>
                             <field name="last_client_sync"/>
+                            <field name="last_order_fetch"/>
                         </group>
                     </group>
 

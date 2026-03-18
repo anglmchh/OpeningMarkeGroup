@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Formulario de Pedido de Venta - Herencia -->
+    <record id="view_order_form_inherit_seped" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.seped</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Agregar pestaña de información SEPED -->
+            <xpath expr="//notebook" position="inside">
+                <page string="SEPED Info" name="seped_info" invisible="not seped_id">
+                    <group>
+                        <group string="Trazabilidad">
+                            <field name="seped_id" readonly="1"/>
+                            <field name="seped_codisb" readonly="1"/>
+                            <field name="seped_estado" readonly="1"/>
+                        </group>
+                        <group string="Descuentos de Cabecera (%)">
+                            <field name="seped_dc" readonly="1"/>
+                            <field name="seped_di" readonly="1"/>
+                            <field name="seped_pp" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+
+            <!-- Agregar campos a las líneas del pedido -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='price_subtotal']" position="before">
+                <field name="seped_da" optional="hide" readonly="1"/>
+                <field name="seped_da2" optional="hide" readonly="1"/>
+                <field name="seped_dv" optional="hide" readonly="1"/>
+                <field name="seped_di" optional="hide" readonly="1"/>
+                <field name="seped_dc" optional="hide" readonly="1"/>
+                <field name="seped_pp" optional="hide" readonly="1"/>
+                <field name="seped_neto_original" optional="hide" readonly="1" string="Neto SEPED"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

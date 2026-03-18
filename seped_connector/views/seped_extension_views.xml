@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista Formulario de Partner - Herencia -->
+    <record id="view_partner_form_inherit_seped" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.seped</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="SEPED" name="seped_settings">
+                    <group>
+                        <group string="Descuentos de Cliente (%)">
+                            <field name="seped_dc"/>
+                            <field name="seped_di"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista Formulario de Producto - Herencia -->
+    <record id="product_template_form_view_inherit_seped" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.seped</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="SEPED" name="seped_product_settings">
+                    <group>
+                        <group string="Descuentos Predefinidos (%)">
+                            <field name="seped_da"/>
+                            <field name="seped_da2"/>
+                            <field name="seped_dv"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

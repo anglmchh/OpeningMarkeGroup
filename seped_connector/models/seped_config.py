@@ -56,6 +56,28 @@ class SepedConfig(models.Model):
         string='Última Sincronización de Clientes',
         readonly=True,
     )
+    last_order_fetch = fields.Datetime(
+        string='Último Polling de Pedidos',
+        readonly=True,
+    )
+
+    # ── Configuración de pedidos ──────────────────────────────────────────────
+    order_limit = fields.Integer(
+        string='Límite de Pedidos por Consulta',
+        default=50,
+        help='Máximo de pedidos a traer por cada llamada a SEPED (1-200).',
+    )
+    order_estado_filter = fields.Char(
+        string='Estado a Consultar en SEPED',
+        default='PEND-FACTURA',
+        help='Solo se importan pedidos con este estado. Por defecto: PEND-FACTURA.',
+    )
+    order_estado_procesado = fields.Char(
+        string='Estado a Fijar tras Importar',
+        default='EN-PROCESO',
+        help='Estado que se envía a SEPED cuando el pedido es creado exitosamente en Odoo.',
+    )
+
     note = fields.Text(string='Notas')
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -228,6 +250,10 @@ class SepedConfig(models.Model):
                     'desprod': prod.name or '',
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
+                    # Nuevos campos de descuento
+                    'da': prod.seped_da or 0.0,
+                    'da2': prod.seped_da2 or 0.0,
+                    'dv': prod.seped_dv or 0.0,
                 })
 
             payload = {
@@ -362,6 +388,9 @@ class SepedConfig(models.Model):
                     'ppago': ppago,
                     'usaprecio': usaprecio,
                     'email': partner.email or '',
+                    # Nuevos campos de descuento
+                    'dcomercial': partner.seped_dc or 0.0,
+                    'dinternet': partner.seped_di or 0.0,
                 })
 
             payload = {
@@ -389,6 +418,238 @@ class SepedConfig(models.Model):
             _('%d clientes enviados correctamente a SEPED.') % total_sent,
             'success',
         )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Obtener Pedidos Pendientes de SEPED
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_fetch_orders(self):
+        """
+        Disparador manual: obtiene pedidos pendientes de SEPED y los importa
+        como sale.order en Odoo. Muestra una notificación con el resultado.
+        """
+        self.ensure_one()
+        imported, skipped, errors = self._fetch_and_import_orders()
+        if errors:
+            return self._notify(
+                _('Pedidos con errores'),
+                _('%d importados, %d ya existían, %d con error:\n%s')
+                % (imported, skipped, len(errors), '\n'.join(errors)),
+                'warning',
+            )
+        return self._notify(
+            _('Pedidos obtenidos'),
+            _('%d pedidos importados correctamente desde SEPED. %d ya existían.') % (imported, skipped),
+            'success',
+        )
+
+    def _fetch_and_import_orders(self):
+        """
+        Lógica central de importación de pedidos:
+        1. GET /api/pedidos/pendientes
+        2. Por cada pedido: crear sale.order y notificar a SEPED
+
+        :returns: (importados, omitidos, lista_errores)
+        """
+        self.ensure_one()
+        limit = max(1, min(self.order_limit or 50, 200))
+        estado_filter = self.order_estado_filter or 'PEND-FACTURA'
+
+        result = self._make_request(
+            'GET',
+            '/api/pedidos/pendientes?codisb=%s&limit=%d&estado=%s'
+            % (self.codisb, limit, estado_filter),
+        )
+
+        pedidos = result.get('pedidos', [])
+        if not pedidos:
+            _logger.info('SEPED fetch_orders: No hay pedidos en estado %s.', estado_filter)
+            self.last_order_fetch = fields.Datetime.now()
+            return 0, 0, []
+
+        imported = skipped = 0
+        errors = []
+
+        SaleOrder = self.env['sale.order']
+        for pedido in pedidos:
+            seped_id = pedido.get('id')
+            if not seped_id:
+                continue
+
+            # Deduplicación: ¿ya existe este pedido?
+            if SaleOrder.search_count([('seped_id', '=', seped_id),
+                                       ('seped_codisb', '=', self.codisb)]):
+                skipped += 1
+                _logger.debug('SEPED fetch_orders: pedido id=%s ya existe, omitido.', seped_id)
+                continue
+
+            try:
+                order = self._create_sale_order_from_seped(pedido)
+                self._update_seped_order_estado(
+                    seped_id,
+                    self.order_estado_procesado or 'EN-PROCESO',
+                    order.name,
+                )
+                imported += 1
+                _logger.info('SEPED fetch_orders: pedido id=%s → %s OK.', seped_id, order.name)
+            except Exception as e:
+                msg = 'Pedido SEPED id=%s: %s' % (seped_id, str(e))
+                errors.append(msg)
+                _logger.error('SEPED fetch_orders error: %s', msg)
+                # Notificar fallo a SEPED para que quede registrado
+                try:
+                    self._update_seped_order_estado(seped_id, 'ERROR-ODOO', str(e)[:100])
+                except Exception:
+                    pass
+
+        self.last_order_fetch = fields.Datetime.now()
+        return imported, skipped, errors
+
+    def _create_sale_order_from_seped(self, pedido):
+        """
+        Crea un sale.order (en estado borrador) a partir de un dict de pedido SEPED.
+
+        Estrategia de descuentos:
+        - SEPED maneja: dc, di, dp, dv, dvp, da, da2, da3, dct, pp
+        - Odoo tiene un único campo 'discount' (%) por línea.
+        - Solución: usar 'neto' como price_unit (precio final tras TODOS los descuentos).
+          Así el subtotal de la línea cuadra exactamente con SEPED sin necesidad
+          de recalcular los descuentos individuales.
+
+        :param pedido: dict con campos del pedido SEPED (pedido + pedren anidado)
+        :returns: sale.order recién creado
+        :raises: ValueError si el cliente o algún producto no se encuentra en Odoo
+        """
+        self.ensure_one()
+        Partner = self.env['res.partner']
+        Product = self.env['product.product']
+        Tax = self.env['account.tax']
+
+        # ── 1. Localizar cliente ─────────────────────────────────────────────
+        codcli = str(pedido.get('codcli', '')).strip()
+        partner = Partner.search([('ref', '=', codcli), ('customer_rank', '>', 0)], limit=1)
+        if not partner:
+            # Fallback: buscar por nombre exacto
+            nomcli = pedido.get('nomcli', '')
+            partner = Partner.search([('name', '=', nomcli)], limit=1)
+        if not partner:
+            raise ValueError(
+                _('Cliente codcli="%s" (%s) no encontrado en Odoo. '
+                  'Sincronice los clientes primero.') % (codcli, pedido.get('nomcli', ''))
+            )
+
+        # ── 2. Preparar valores de la cabecera ───────────────────────────────
+        fecha_str = pedido.get('fecha', '')
+        date_order = False
+        if fecha_str:
+            try:
+                from dateutil import parser as dateutil_parser
+                date_order = dateutil_parser.parse(fecha_str)
+            except Exception:
+                pass
+
+        order_vals = {
+            'partner_id': partner.id,
+            'date_order': date_order or fields.Datetime.now(),
+            'note': pedido.get('observacion', '') or '',
+            'client_order_ref': pedido.get('num_cesta_ped', '') or '',
+            'seped_id': pedido.get('id'),
+            'seped_codisb': self.codisb,
+            'seped_estado': self.order_estado_procesado or 'EN-PROCESO',
+            # Descuentos de Cabecera
+            'seped_dc': float(pedido.get('dc') or 0.0),
+            'seped_di': float(pedido.get('di') or 0.0),
+            'seped_pp': float(pedido.get('pp') or 0.0),
+        }
+
+        # ── 3. Construir líneas ──────────────────────────────────────────────
+        renglones = pedido.get('pedren', [])
+        if not renglones:
+            raise ValueError(_('El pedido SEPED id=%s no contiene renglones.') % pedido.get('id'))
+
+        order_lines = []
+        for ren in renglones:
+            codprod = str(ren.get('codprod', '')).strip()
+            product = Product.search([('default_code', '=', codprod)], limit=1)
+            if not product:
+                # Fallback: búsqueda por código de barras
+                barra = str(ren.get('barra', '')).strip()
+                if barra:
+                    product = Product.search([('barcode', '=', barra)], limit=1)
+            if not product:
+                raise ValueError(
+                    _('Producto codprod="%s" (%s) no encontrado en Odoo. '
+                      'Sincronice el catálogo primero.')
+                    % (codprod, ren.get('desprod', ''))
+                )
+
+            # Precio final = neto (después de dc, di, dp, dv, dvp, da, da2, da3, dct, pp)
+            # Si neto es 0 o no existe, usamos precio como fallback.
+            neto = float(ren.get('neto') or 0.0)
+            precio = float(ren.get('precio') or 0.0)
+            price_unit = neto if neto > 0 else precio
+
+            cantidad = float(ren.get('cantidad') or 1.0)
+
+            # Impuesto: buscar por porcentaje si iva > 0
+            tax_ids = []
+            iva_pct = float(ren.get('iva') or 0.0)
+            if iva_pct > 0:
+                tax = Tax.search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('amount', '=', iva_pct),
+                    ('amount_type', '=', 'percent'),
+                ], limit=1)
+                if tax:
+                    tax_ids = [(4, tax.id)]
+
+            line_vals = {
+                'product_id': product.id,
+                'product_uom_qty': cantidad,
+                'price_unit': price_unit,
+                'tax_id': tax_ids,
+                'sequence': int(ren.get('item') or 10),
+                # Guardamos el precio original SEPED en nombre de la línea como referencia
+                'name': product.name or ren.get('desprod', ''),
+                # Desglose de descuentos SEPED en la línea
+                'seped_neto_original': neto,
+                'seped_dc': float(ren.get('dc') or 0.0),
+                'seped_di': float(ren.get('di') or 0.0),
+                'seped_pp': float(ren.get('pp') or 0.0),
+                'seped_da': float(ren.get('da') or 0.0),
+                'seped_da2': float(ren.get('da2') or 0.0),
+                'seped_dv': float(ren.get('dv') or 0.0),
+            }
+            order_lines.append((0, 0, line_vals))
+
+        order_vals['order_line'] = order_lines
+
+        order = self.env['sale.order'].create(order_vals)
+        _logger.info('SEPED: sale.order %s creado desde pedido SEPED id=%s.', order.name, pedido.get('id'))
+        return order
+
+    def _update_seped_order_estado(self, seped_order_id, estado, documento=''):
+        """
+        Llama a PATCH /api/pedidos/estado para actualizar el estado del pedido
+        en la base SIDES de SEPED.
+
+        :param seped_order_id: int, ID del pedido en SEPED
+        :param estado: str, nuevo estado (ej: 'EN-PROCESO', 'FACTURADO', 'ERROR-ODOO')
+        :param documento: str, referencia Odoo (ej: 'S00042' o número de factura)
+        """
+        self.ensure_one()
+        payload = {
+            'codisb': self.codisb,
+            'id': seped_order_id,
+            'estado': estado,
+            'documento': (documento or '')[:100],
+        }
+        result = self._make_request('PATCH', '/api/pedidos/estado', payload)
+        _logger.info(
+            'SEPED PATCH estado pedido id=%s → %s | respuesta: %s',
+            seped_order_id, estado, result,
+        )
+        return result
 
     # ─────────────────────────────────────────────────────────────────────────
     # Métodos de cron (llamados desde ir.cron)
@@ -429,6 +690,22 @@ class SepedConfig(models.Model):
             config.action_sync_clients()
         except Exception as e:
             _logger.error('SEPED cron_sync_clients error: %s', e)
+
+    @api.model
+    def cron_fetch_orders(self):
+        """Ejecutado por cron: obtiene pedidos pendientes de SEPED e importa como sale.order."""
+        config = self.search([('active', '=', True)], limit=1)
+        if not config:
+            _logger.warning('SEPED cron_fetch_orders: No hay configuración activa.')
+            return
+        try:
+            imported, skipped, errors = config._fetch_and_import_orders()
+            _logger.info(
+                'SEPED cron_fetch_orders: %d importados, %d omitidos, %d errores.',
+                imported, skipped, len(errors),
+            )
+        except Exception as e:
+            _logger.error('SEPED cron_fetch_orders error: %s', e)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Helper de notificación
