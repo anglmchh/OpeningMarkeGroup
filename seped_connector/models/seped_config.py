@@ -255,13 +255,13 @@ class SepedConfig(models.Model):
                     'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
-                    # PRUEBA: El manual no lista 'iva', pero sí 'tipo' y 'regulado'
-                    'tipo': '1' if iva_val > 0 else '0',
-                    'regulado': '0',
-                    'iva': iva_val,
-                    'ivap': iva_val,
-                    'porc_iva': iva_val,
-                    'alicuota_iva': iva_val,
+                    # ÚLTIMO INTENTO SHOTGUN: Variaciones de nombre y tipo (entero vs float)
+                    'tipo': 1 if iva_val > 0 else 0,
+                    'iva': int(iva_val),
+                    'IVA': int(iva_val),
+                    'alicuota': int(iva_val),
+                    'ivap': int(iva_val),
+                    'tax': int(iva_val),
                     # Nuevos campos de descuento
                     'da': prod.seped_da or 0.0,
                     'da2': prod.seped_da2 or 0.0,
