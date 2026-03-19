@@ -250,6 +250,7 @@ class SepedConfig(models.Model):
                     'desprod': prod.name or '',
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
+                    'iva': prod.taxes_id[0].amount if prod.taxes_id else 0.0,
                     # Nuevos campos de descuento
                     'da': prod.seped_da or 0.0,
                     'da2': prod.seped_da2 or 0.0,
