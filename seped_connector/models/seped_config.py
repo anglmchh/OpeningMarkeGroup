@@ -255,13 +255,11 @@ class SepedConfig(models.Model):
                     'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
-                    # ÚLTIMO INTENTO SHOTGUN: Variaciones de nombre y tipo (entero vs float)
-                    'tipo': 1 if iva_val > 0 else 0,
+                    # Campos finales validados con soporte técnico de SEPED
                     'iva': int(iva_val),
-                    'IVA': int(iva_val),
-                    'alicuota': int(iva_val),
-                    'ivap': int(iva_val),
-                    'tax': int(iva_val),
+                    'tipo': 'p',
+                    'regulado': '0',
+                    'original': '0',
                     # Nuevos campos de descuento
                     'da': prod.seped_da or 0.0,
                     'da2': prod.seped_da2 or 0.0,
