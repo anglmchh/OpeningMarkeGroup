@@ -26,16 +26,26 @@ class AccountMove(models.Model):
                             try:
                                 # Notificar a SEPED
                                 status_msg = _('Factura %s validada en Odoo.') % move.name
+                                target_status = config.order_estado_facturado or 'FACTURADO'
+                                
                                 config._update_seped_order_estado(
                                     sale.seped_id,
-                                    config.order_estado_facturado or 'FACTURADO',
+                                    target_status,
                                     status_msg
                                 )
+                                # Registrar éxito en el chatter del pedido
+                                sale.message_post(body=_(
+                                    '✓ <b>SEPED</b>: Estado actualizado a <b>%s</b> automáticamente al facturar.'
+                                ) % target_status)
+
                             except Exception as e:
-                                # No queremos bloquear la facturación por un error de API
-                                # pero sí dejar registro en el log.
+                                # No bloqueamos la factura, pero avisamos en el chatter
                                 log_msg = 'Error al actualizar estado en SEPED (Factura %s, Pedido %s): %s' % (
                                     move.name, sale.name, str(e))
+                                sale.message_post(body=_(
+                                    '⚠ <b>SEPED</b>: Fallo al actualizar estado a Facturado.<br/>Detalle: %s'
+                                ) % str(e))
+                                
                                 self.env['ir.logging'].create({
                                     'name': 'seped.connector',
                                     'type': 'server',
@@ -44,6 +54,6 @@ class AccountMove(models.Model):
                                     'message': log_msg,
                                     'path': 'seped_connector.models.account_move',
                                     'func': 'action_post',
-                                    'line': '35',
+                                    'line': '29',
                                 })
         return res
