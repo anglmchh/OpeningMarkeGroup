@@ -61,6 +61,7 @@
                         <group>
                             <field name="order_estado_filter"/>
                             <field name="order_estado_procesado"/>
+                            <field name="order_estado_facturado"/>
                         </group>
                         <group>
                             <field name="order_limit"/>

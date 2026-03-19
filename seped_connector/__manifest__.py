@@ -16,7 +16,7 @@
         - GET   /api/pedidos/pendientes         (Importar pedidos SEPED)
         - PATCH /api/pedidos/estado             (Confirmar/actualizar estado)
     """,
-    'author': 'G3C',
+    'author': 'Marv1nChaviel',
     'category': 'Inventory/Integration',
     'license': 'LGPL-3',
     'depends': [
@@ -25,6 +25,7 @@
         'stock',
         'sale',
         'contacts',
+        'account',
     ],
     'data': [
         'security/ir.model.access.csv',
