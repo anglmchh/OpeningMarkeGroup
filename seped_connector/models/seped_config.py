@@ -452,13 +452,14 @@ class SepedConfig(models.Model):
         if errors:
             return self._notify(
                 _('Pedidos con errores'),
-                _('%d importados, %d ya existían, %d con error:\n%s')
-                % (imported, skipped, len(errors), '\n'.join(errors)),
+                _('%d importados, %d ya existían, %d con error (Filtro: %s, Distribuidor: %s):\n%s')
+                % (imported, skipped, len(errors), self.order_estado_filter or 'PEND-FACTURA', self.codisb, '\n'.join(errors)),
                 'warning',
             )
         return self._notify(
             _('Pedidos obtenidos'),
-            _('%d pedidos importados correctamente desde SEPED. %d ya existían.') % (imported, skipped),
+            _('%d pedidos importados, %d ya existían. (Filtro: %s, Distribuidor: %s)') 
+            % (imported, skipped, self.order_estado_filter or 'PEND-FACTURA', self.codisb),
             'success',
         )
 
@@ -481,6 +482,7 @@ class SepedConfig(models.Model):
         )
 
         pedidos = result.get('pedidos', [])
+        _logger.info('SEPED fetch_orders: El API devolvió %d pedidos con estado %s y codisb %s.', len(pedidos), estado_filter, self.codisb)
         if not pedidos:
             _logger.info('SEPED fetch_orders: No hay pedidos en estado %s.', estado_filter)
             self.last_order_fetch = fields.Datetime.now()
