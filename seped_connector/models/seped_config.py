@@ -481,6 +481,7 @@ class SepedConfig(models.Model):
             % (self.codisb, limit, estado_filter),
         )
 
+        _logger.info('SEPED fetch_orders: Raw response: %s', result)
         pedidos = result.get('pedidos', [])
         _logger.info('SEPED fetch_orders: El API devolvió %d pedidos con estado %s y codisb %s.', len(pedidos), estado_filter, self.codisb)
         if not pedidos:
