@@ -255,7 +255,6 @@ class SepedConfig(models.Model):
                     'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
-                    'iva': iva_val,
                     # Nuevos campos de descuento
                     'da': prod.seped_da or 0.0,
                     'da2': prod.seped_da2 or 0.0,
@@ -265,12 +264,8 @@ class SepedConfig(models.Model):
                 if not debug_payload:
                     debug_payload = str(item)
 
-            codisb_val = self.codisb
-            if codisb_val and codisb_val.isdigit():
-                codisb_val = int(codisb_val)
-
             payload = {
-                'codisb': codisb_val,
+                'codisb': self.codisb,
                 'productos': payload_items,
             }
             try:
@@ -294,7 +289,7 @@ class SepedConfig(models.Model):
         # Mensaje de éxito con información de depuración
         msg = _('%d productos enviados correctamente a SEPED.') % total_sent
         if debug_payload:
-            msg += _('\n\nDEBUG (1er item): %s\nCODISB: %s') % (debug_payload, str(codisb_val))
+            msg += _('\n\nDEBUG (1er item): %s\nCODISB: %s') % (debug_payload, self.codisb)
             
         return self._notify(
             _('Productos sincronizados'),
