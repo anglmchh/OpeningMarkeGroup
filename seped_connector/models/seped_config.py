@@ -238,27 +238,39 @@ class SepedConfig(models.Model):
 
         total_sent = 0
         errors = []
+        debug_payload = ""
 
         # Enviamos en lotes para no exceder límites del servidor
         for i in range(0, len(products), self.batch_size):
             batch = products[i:i + self.batch_size]
             payload_items = []
             for prod in batch:
-                payload_items.append({
+                # Obtener IVA (preferencia variant > template)
+                taxes = prod.taxes_id or prod.product_tmpl_id.taxes_id
+                iva_val = taxes[0].amount if taxes else 0.0
+
+                item = {
                     'codprod': prod.default_code or str(prod.id),
                     'barra': prod.barcode or '',
-                    'desprod': prod.name or '',
+                    'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
-                    'iva': prod.taxes_id[0].amount if prod.taxes_id else 0.0,
+                    'iva': iva_val,
                     # Nuevos campos de descuento
                     'da': prod.seped_da or 0.0,
                     'da2': prod.seped_da2 or 0.0,
                     'dv': prod.seped_dv or 0.0,
-                })
+                }
+                payload_items.append(item)
+                if not debug_payload:
+                    debug_payload = str(item)
+
+            codisb_val = self.codisb
+            if codisb_val and codisb_val.isdigit():
+                codisb_val = int(codisb_val)
 
             payload = {
-                'codisb': self.codisb,
+                'codisb': codisb_val,
                 'productos': payload_items,
             }
             try:
@@ -278,9 +290,15 @@ class SepedConfig(models.Model):
                 _('%d productos enviados con %d errores de lote:\n%s') % (total_sent, len(errors), '\n'.join(errors)),
                 'warning',
             )
+        
+        # Mensaje de éxito con información de depuración
+        msg = _('%d productos enviados correctamente a SEPED.') % total_sent
+        if debug_payload:
+            msg += _('\n\nDEBUG (1er item): %s\nCODISB: %s') % (debug_payload, str(codisb_val))
+            
         return self._notify(
             _('Productos sincronizados'),
-            _('%d productos enviados correctamente a SEPED.') % total_sent,
+            msg,
             'success',
         )
 
