@@ -28,6 +28,13 @@ class SaleOrderSeped(models.Model):
     seped_di = fields.Float(string='SEPED Desc. Internet (%)', copy=False)
     seped_pp = fields.Float(string='SEPED Desc. Pronto Pago (%)', copy=False)
 
+    # Tasa de Cambio SEPED
+    seped_factor_cambio = fields.Float(
+        string='Factor Cambiario SEPED',
+        copy=False,
+        help='Tasa de cambio (VEF/USD) enviada por SEPED en el momento del pedido.',
+    )
+
 
 class SaleOrderLineSeped(models.Model):
     """

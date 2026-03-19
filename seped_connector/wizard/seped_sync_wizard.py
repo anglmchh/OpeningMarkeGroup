@@ -55,7 +55,7 @@ class SepedSyncWizard(models.TransientModel):
                 messages.append(_('✓ Clientes sincronizados correctamente.'))
 
             if self.sync_type in ('orders', 'all'):
-                imported, skipped, errors = config.action_fetch_orders()
+                imported, skipped, errors = config._fetch_and_import_orders()
                 summary = _('✓ Pedidos: %d importados, %d omitidos.') % (imported, skipped)
                 if errors:
                     summary += _('\n✗ Errores en pedidos: %d (Ver logs para detalle)') % len(errors)

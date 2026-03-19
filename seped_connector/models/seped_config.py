@@ -546,29 +546,50 @@ class SepedConfig(models.Model):
 
         # ── 1. Localizar cliente ─────────────────────────────────────────────
         codcli = str(pedido.get('codcli', '')).strip()
+        rif = str(pedido.get('rif', '')).strip()
+        nomcli = str(pedido.get('nomcli', '')).strip()
         partner = False
+
+        # Prioridad 1: Buscar por ID de Odoo (si codcli es numérico)
+        # Tras la sincronización full de clientes, este ID es la fuente de verdad.
         if codcli.isdigit():
-            # Prioridad 1: Buscar por ID de Odoo
             partner = Partner.search([('id', '=', int(codcli)), ('customer_rank', '>', 0)], limit=1)
+
+        # Prioridad 2: Buscar por RIF (Fallback para registros viejos o sucursales)
+        if not partner and rif:
+            # Helper para normalizar RIF (eliminar guiones y espacios)
+            def _norm_rif(v):
+                return "".join(c for c in str(v or '') if c.isalnum()).upper()
+            seped_rif_norm = _norm_rif(rif)
+
+            # Buscar partners con este RIF
+            domain = ['|', ('rif', '=', rif), ('rif', '=', seped_rif_norm), ('customer_rank', '>', 0)]
+            partners_rif = Partner.search(domain)
             
+            if len(partners_rif) == 1:
+                partner = partners_rif[0]
+            elif len(partners_rif) > 1:
+                # Si hay varias sucursales con el mismo RIF, diferenciar por nombre
+                for p in partners_rif:
+                    p_name = (p.name or '').upper()
+                    if nomcli.upper() in p_name or p_name in nomcli.upper():
+                        partner = p
+                        break
+                if not partner:
+                    partner = partners_rif[0]
+
+        # Prioridad 3: Buscar por Referencia (ref)
         if not partner:
-            # Prioridad 2: Buscar por Referencia (ref)
             partner = Partner.search([('ref', '=', codcli), ('customer_rank', '>', 0)], limit=1)
 
         if not partner:
-            # Prioridad 3: Buscar por RIF (si existe en el pedido)
-            rif = str(pedido.get('rif', '')).strip()
-            if rif:
-                partner = Partner.search([('rif', '=', rif), ('customer_rank', '>', 0)], limit=1)
+            # Fallback final: buscar por nombre exacto
+            partner = Partner.search([('name', '=', nomcli)], limit=1)
 
         if not partner:
-            # Fallback final: buscar por nombre exacto
-            nomcli = pedido.get('nomcli', '')
-            partner = Partner.search([('name', '=', nomcli)], limit=1)
-        if not partner:
             raise ValueError(
-                _('Cliente codcli="%s" (%s) no encontrado en Odoo. '
-                  'Sincronice los clientes primero.') % (codcli, pedido.get('nomcli', ''))
+                _('Cliente codcli="%s" (RIF: %s) no encontrado en Odoo. '
+                  'Sincronice los clientes primero.') % (codcli, rif)
             )
 
         # ── 2. Preparar valores de la cabecera ───────────────────────────────
@@ -589,6 +610,7 @@ class SepedConfig(models.Model):
             'seped_id': pedido.get('id'),
             'seped_codisb': self.codisb,
             'seped_estado': self.order_estado_procesado or 'EN-PROCESO',
+            'seped_factor_cambio': float(pedido.get('factorcambiario') or 0.0),
             # Descuentos de Cabecera
             'seped_dc': float(pedido.get('dc') or 0.0),
             'seped_di': float(pedido.get('di') or 0.0),
