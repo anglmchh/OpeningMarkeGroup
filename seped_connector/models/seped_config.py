@@ -400,7 +400,7 @@ class SepedConfig(models.Model):
                 direccion = ', '.join(address_parts) or ''
 
                 payload_items.append({
-                    'codcli': partner.ref or str(partner.id),
+                    'codcli': str(partner.id),
                     'nombre': partner.name or '',
                     'rif': partner.rif or '',
                     'direccion': direccion,
@@ -546,7 +546,14 @@ class SepedConfig(models.Model):
 
         # ── 1. Localizar cliente ─────────────────────────────────────────────
         codcli = str(pedido.get('codcli', '')).strip()
-        partner = Partner.search([('ref', '=', codcli), ('customer_rank', '>', 0)], limit=1)
+        partner = False
+        if codcli.isdigit():
+            # Prioridad 1: Buscar por ID de Odoo
+            partner = Partner.search([('id', '=', int(codcli)), ('customer_rank', '>', 0)], limit=1)
+            
+        if not partner:
+            # Prioridad 2: Buscar por Referencia (ref)
+            partner = Partner.search([('ref', '=', codcli), ('customer_rank', '>', 0)], limit=1)
         if not partner:
             # Fallback: buscar por nombre exacto
             nomcli = pedido.get('nomcli', '')
