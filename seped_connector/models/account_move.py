@@ -28,15 +28,16 @@ class AccountMove(models.Model):
                                 status_msg = _('Factura %s validada en Odoo.') % move.name
                                 target_status = config.order_estado_facturado or 'FACTURADO'
                                 
-                                config._update_seped_order_estado(
+                                result = config._update_seped_order_estado(
                                     sale.seped_id,
                                     target_status,
                                     status_msg
                                 )
                                 # Registrar éxito en el chatter del pedido
                                 sale.message_post(body=_(
-                                    '✓ <b>SEPED</b>: Estado actualizado a <b>%s</b> automáticamente al facturar.'
-                                ) % target_status)
+                                    '✓ <b>SEPED</b>: Estado actualizado a <b>%s</b> automáticamente al facturar.<br/>'
+                                    'Respuesta SEPED: <i>%s</i>'
+                                ) % (target_status, result.get('msg', 'OK')))
 
                             except Exception as e:
                                 # No bloqueamos la factura, pero avisamos en el chatter
