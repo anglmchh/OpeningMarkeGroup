@@ -369,7 +369,7 @@ class SepedConfig(models.Model):
         self.ensure_one()
         Partner = self.env['res.partner']
         clients = Partner.search([
-            ('customer_rank', '>', 0),
+            '|', ('customer_rank', '>', 0), ('is_company', '=', True),
             ('active', '=', True),
         ])
 
@@ -554,8 +554,15 @@ class SepedConfig(models.Model):
         if not partner:
             # Prioridad 2: Buscar por Referencia (ref)
             partner = Partner.search([('ref', '=', codcli), ('customer_rank', '>', 0)], limit=1)
+
         if not partner:
-            # Fallback: buscar por nombre exacto
+            # Prioridad 3: Buscar por RIF (si existe en el pedido)
+            rif = str(pedido.get('rif', '')).strip()
+            if rif:
+                partner = Partner.search([('rif', '=', rif), ('customer_rank', '>', 0)], limit=1)
+
+        if not partner:
+            # Fallback final: buscar por nombre exacto
             nomcli = pedido.get('nomcli', '')
             partner = Partner.search([('name', '=', nomcli)], limit=1)
         if not partner:

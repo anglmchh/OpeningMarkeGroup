@@ -19,7 +19,8 @@ class SepedSyncWizard(models.TransientModel):
             ('products', 'Productos (Full Sync)'),
             ('stock', 'Stock (Actualización de cantidades)'),
             ('clients', 'Clientes (Full Sync)'),
-            ('all', 'Todo (Productos + Stock + Clientes)'),
+            ('orders', 'Pedidos (Desde SEPED a Odoo)'),
+            ('all', 'Todo (Productos + Stock + Clientes + Pedidos)'),
         ],
         string='Tipo de Sincronización',
         required=True,
@@ -52,6 +53,13 @@ class SepedSyncWizard(models.TransientModel):
             if self.sync_type in ('clients', 'all'):
                 config.action_sync_clients()
                 messages.append(_('✓ Clientes sincronizados correctamente.'))
+
+            if self.sync_type in ('orders', 'all'):
+                imported, skipped, errors = config.action_fetch_orders()
+                summary = _('✓ Pedidos: %d importados, %d omitidos.') % (imported, skipped)
+                if errors:
+                    summary += _('\n✗ Errores en pedidos: %d (Ver logs para detalle)') % len(errors)
+                messages.append(summary)
 
         except UserError as e:
             messages.append(_('✗ Error: %s') % str(e.args[0]))
