@@ -60,6 +60,50 @@ class SepedConfig(models.Model):
         string='Último Polling de Pedidos',
         readonly=True,
     )
+    last_vendor_sync = fields.Datetime(
+        string='Última Sincronización de Proveedores',
+        readonly=True,
+    )
+    last_invoice_sync = fields.Datetime(
+        string='Última Sincronización de Facturas',
+        readonly=True,
+    )
+    last_cxc_sync = fields.Datetime(
+        string='Última Sincronización de CxC',
+        readonly=True,
+    )
+    last_cxp_sync = fields.Datetime(
+        string='Última Sincronización de CxP',
+        readonly=True,
+    )
+    last_bank_sync = fields.Datetime(
+        string='Última Sincronización de Bancos',
+        readonly=True,
+    )
+    last_vendedor_sync = fields.Datetime(
+        string='Última Sincronización de Vendedores',
+        readonly=True,
+    )
+    last_category_sync = fields.Datetime(
+        string='Última Sincronización de Categorías',
+        readonly=True,
+    )
+    last_lote_sync = fields.Datetime(
+        string='Última Sincronización de Lotes',
+        readonly=True,
+    )
+    last_moneda_sync = fields.Datetime(
+        string='Última Sincronización de Monedas',
+        readonly=True,
+    )
+    last_prodfalla_sync = fields.Datetime(
+        string='Última Sincronización de Prod. Falla',
+        readonly=True,
+    )
+    last_ventares_sync = fields.Datetime(
+        string='Última Sincronización de Ventas Resumen',
+        readonly=True,
+    )
 
     # ── Configuración de pedidos ──────────────────────────────────────────────
     order_limit = fields.Integer(
@@ -442,6 +486,580 @@ class SepedConfig(models.Model):
             _('%d clientes enviados correctamente a SEPED.') % total_sent,
             'success',
         )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Proveedores (Full Sync)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_vendors(self):
+        """
+        Envía el padrón de proveedores activos a SEPED.
+        Solo se envían partners con supplier_rank > 0.
+        """
+        self.ensure_one()
+        Partner = self.env['res.partner']
+        vendors = Partner.search([
+            '|', ('supplier_rank', '>', 0), ('is_company', '=', True),
+            ('active', '=', True),
+        ])
+
+        if not vendors:
+            return self._notify(_('Sin proveedores'), _('No se encontraron proveedores activos para sincronizar.'), 'warning')
+
+        total_sent = 0
+        errors = []
+
+        for i in range(0, len(vendors), self.batch_size):
+            batch = vendors[i:i + self.batch_size]
+            payload_items = []
+            for partner in batch:
+                # Construir dirección
+                address_parts = filter(None, [partner.street, partner.street2, partner.city])
+                direccion = ', '.join(address_parts) or ''
+                
+                # Plazo de pago
+                diascred = 0
+                if partner.property_supplier_payment_term_id:
+                    term_lines = partner.property_supplier_payment_term_id.line_ids
+                    if term_lines:
+                        diascred = int(term_lines[0].days or 0)
+
+                # Datos financieros (si están disponibles)
+                # OJO: Los campos de saldo dual currency dependen del módulo instalado
+                saldo = getattr(partner, 'total_due', 0.0)
+                # Intento obtener saldo en USD si existe el campo del módulo dual_currency
+                saldo_ds = getattr(partner, 'total_due_usd', 0.0)
+                vencido = getattr(partner, 'total_overdue', 0.0)
+                vencido_ds = getattr(partner, 'total_overdue_usd', 0.0)
+
+                payload_items.append({
+                    'codprov': str(partner.id),
+                    'nombre': partner.name or '',
+                    'rif': getattr(partner, 'rif', '') or '',
+                    'direccion': direccion,
+                    'telefono': partner.phone or partner.mobile or '',
+                    'contacto': partner.name or '', # Podría ser un contacto hijo
+                    'estado': 'Activo' if partner.active else 'Inactivo',
+                    'email': partner.email or '',
+                    'diascred': diascred,
+                    'saldo': saldo,
+                    'codisb': self.codisb,
+                    'vencido': vencido,
+                    'saldoDs': saldo_ds,
+                    'vencidoDs': vencido_ds,
+                })
+
+            payload = {
+                'codisb': self.codisb,
+                'proveedores': payload_items,
+            }
+            try:
+                # Usamos el endpoint inferido o el que el usuario asigne
+                result = self._make_request('POST', '/api/inventario/proveedores/sync', payload)
+                total_sent += len(payload_items)
+            except UserError as e:
+                errors.append(str(e.args[0]))
+
+        self.last_vendor_sync = fields.Datetime.now()
+
+        if errors:
+            return self._notify(
+                _('Sincronización parcial'),
+                _('%d proveedores enviados con %d errores:\n%s') % (total_sent, len(errors), '\n'.join(errors)),
+                'warning',
+            )
+        return self._notify(
+            _('Proveedores sincronizados'),
+            _('%d proveedores enviados correctamente a SEPED.') % total_sent,
+            'success',
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Cuentas Bancarias
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_banks(self):
+        """
+        Envía las cuentas bancarias configuradas en Odoo (Journals de tipo bank).
+        """
+        self.ensure_one()
+        Journal = self.env['account.journal']
+        banks = Journal.search([('type', '=', 'bank'), ('active', '=', True)])
+
+        if not banks:
+            return self._notify(_('Sin bancos'), _('No se encontraron diarios de tipo banco para sincronizar.'), 'warning')
+
+        payload_items = []
+        for journal in banks:
+            # Intentar obtener el número de cuenta de la relación bank_account_id
+            num_cuenta = journal.bank_account_id.acc_number if journal.bank_account_id else ''
+            # Sudeban code (si está disponible en el banco)
+            co_banco = ''
+            if journal.bank_id and hasattr(journal.bank_id, 'l10n_ve_code'):
+                co_banco = getattr(journal.bank_id, 'l10n_ve_code')
+            elif journal.bank_id:
+                 co_banco = journal.bank_id.bic or ''
+
+            payload_items.append({
+                'co_cta': str(journal.id),
+                'co_banco': co_banco[:10],
+                'num_cuenta': num_cuenta or journal.name,
+                'codisb': self.codisb,
+                'activo': 1 if journal.active else 0,
+            })
+
+        payload = {
+            'codisb': self.codisb,
+            'cuentas': payload_items,
+        }
+        try:
+            self._make_request('POST', '/api/bancos/cuentas/sync', payload)
+            self.last_bank_sync = fields.Datetime.now()
+            return self._notify(_('Bancos sincronizados'), _('%d cuentas bancarias enviadas.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en bancos'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Facturas (Cabecera y Renglones)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_invoices(self):
+        """
+        Sincroniza facturas de cliente (out_invoice) validadas.
+        Envía cabecera (cargarFact) y renglones (cargarFactRen).
+        """
+        self.ensure_one()
+        Move = self.env['account.move']
+        # Buscamos facturas validadas que no hayan sido sincronizadas o desde la última fecha
+        domain = [
+            ('move_type', '=', 'out_invoice'),
+            ('state', '=', 'posted'),
+        ]
+        if self.last_invoice_sync:
+            domain.append(('write_date', '>', self.last_invoice_sync))
+        
+        invoices = Move.search(domain, order='invoice_date asc', limit=200)
+
+        if not invoices:
+            return self._notify(_('Sin facturas'), _('No hay facturas nuevas para sincronizar.'), 'info')
+
+        total_headers = total_lines = 0
+        errors = []
+
+        for inv in invoices:
+            # 1. Cabecera (cargarFact)
+            # Buscar vendedor
+            codvend = inv.invoice_user_id.id if inv.invoice_user_id else ''
+            # Tasa de cambio (si existe campo de dual currency)
+            factor = getattr(inv, 'os_currency_rate', 1.0)
+            if factor == 1.0:
+                 factor = getattr(inv, 'currency_rate', 1.0)
+
+            header_payload = {
+                'factnum': inv.name or str(inv.id),
+                'fecha': inv.invoice_date.strftime('%Y-%m-%d %H:%M:%S') if inv.invoice_date else '',
+                'codcli': str(inv.partner_id.id),
+                'descrip': (inv.partner_id.name or '')[:100],
+                'monto': inv.amount_untaxed,
+                'iva': inv.amount_tax,
+                'gravable': sum(line.price_subtotal for line in inv.invoice_line_ids if line.tax_ids),
+                'descuento': 0.0, # Odoo suele tener el descuento ya aplicado en el neto de la línea
+                'total': inv.amount_total,
+                'tipofac': 'FACT',
+                'codesta': '01',
+                'codusua': str(inv.create_uid.id),
+                'codvend': str(codvend),
+                'fechav': inv.invoice_date_due.strftime('%Y-%m-%d %H:%M:%S') if inv.invoice_date_due else '',
+                'nroctrol': getattr(inv, 'l10n_ve_control_number', '') or '',
+                'rif': getattr(inv.partner_id, 'rif', '') or '',
+                'codisb': self.codisb,
+                'observacion': inv.ref or '',
+                'codmoneda': inv.currency_id.name or 'USD',
+                'factorcambiario': factor,
+                'origen': 'ODOO',
+            }
+
+            # 2. Renglones (cargarFactRen)
+            line_payloads = []
+            for i, line in enumerate(inv.invoice_line_ids.filtered(lambda l: l.display_type == 'product'), 1):
+                # Intentar obtener lote de la factura (si el módulo lo permite) o del picking relacionado
+                nrolote = ''
+                fechal = ''
+                # Si hay soporte de lotes en factura, lo usamos. Si no, queda vacío.
+                
+                line_payloads.append({
+                    'factnum': inv.name or str(inv.id),
+                    'codprod': line.product_id.default_code or str(line.product_id.id),
+                    'renglon': i,
+                    'desprod': (line.product_id.name or '')[:200],
+                    'referencia': line.product_id.barcode or '',
+                    'cantidad': line.quantity,
+                    'precio': line.price_unit,
+                    'subtotal': line.price_subtotal,
+                    'impuesto': line.price_total - line.price_subtotal,
+                    'descto': (line.price_unit * line.quantity * (line.discount / 100.0)),
+                    'nrolote': nrolote,
+                    'fechal': fechal,
+                    'fecfactura': inv.invoice_date.strftime('%Y-%m-%d %H:%M:%S') if inv.invoice_date else '',
+                    'codisb': self.codisb,
+                    'codprov': '', # Opcional
+                    'marca': '', # Opcional
+                })
+
+            try:
+                # Enviar Cabecera
+                self._make_request('POST', '/api/facturas/sync', {'codisb': self.codisb, 'facturas': [header_payload]})
+                total_headers += 1
+                
+                # Enviar Renglones
+                self._make_request('POST', '/api/facturas/renglones/sync', {'codisb': self.codisb, 'renglones': line_payloads})
+                total_lines += len(line_payloads)
+                
+            except UserError as e:
+                errors.append(_('Error en factura %s: %s') % (inv.name, str(e)))
+
+        self.last_invoice_sync = fields.Datetime.now()
+        
+        msg = _('%d cabeceras y %d renglones sincronizados.') % (total_headers, total_lines)
+        if errors:
+            return self._notify(_('Sincronización facturas parcial'), f"{msg}\nErrors:\n" + "\n".join(errors), 'warning')
+        return self._notify(_('Facturas sincronizadas'), msg, 'success')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de CxC (Cuentas por Cobrar)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_cxc(self):
+        """
+        Envía facturas pendientes de cobro a SEPED (cargarCxc).
+        """
+        self.ensure_one()
+        Move = self.env['account.move']
+        # Facturas abiertas (posted and not paid completely)
+        domain = [
+            ('move_type', '=', 'out_invoice'),
+            ('state', '=', 'posted'),
+            ('payment_state', 'in', ('not_paid', 'partial')),
+        ]
+        invoices = Move.search(domain)
+
+        if not invoices:
+            return self._notify(_('Sin CxC'), _('No hay cuentas por cobrar pendientes.'), 'info')
+
+        payload_items = []
+        for inv in invoices:
+            factor = getattr(inv, 'os_currency_rate', 1.0)
+            # Saldo en dólares si se tiene el módulo
+            saldo_ds = getattr(inv, 'amount_residual_usd', 0.0) 
+            if not saldo_ds and inv.currency_id.name == 'USD':
+                saldo_ds = inv.amount_residual
+
+            payload_items.append({
+                'codcli': str(inv.partner_id.id),
+                'fechai': inv.invoice_date.strftime('%Y-%m-%d %H:%M:%S') if inv.invoice_date else '',
+                'codesta': '01',
+                'codusua': 'N/A',
+                'numerod': (inv.name or '').replace('-', '').replace('/', ''),
+                'tipocxc': 'VEN',
+                'monto': inv.amount_total,
+                'montoneto': inv.amount_untaxed,
+                'mtotax': inv.amount_tax,
+                'saldo': inv.amount_residual,
+                'nroctrol': getattr(inv, 'l10n_ve_control_number', '') or '',
+                'notas1': f"FACT NRO {inv.name} de Cliente {inv.partner_id.name}",
+                'descrip': (inv.partner_id.name or '')[:100],
+                'codisb': self.codisb,
+                'codmoneda': inv.currency_id.name or 'USD',
+                'factorcambiario': factor,
+                'fecha': fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'saldoDs': saldo_ds,
+                'id': inv.name or str(inv.id),
+            })
+
+        payload = {
+            'codisb': self.codisb,
+            'cxc': payload_items,
+        }
+        try:
+            self._make_request('POST', '/api/cuentas/cobrar/sync', payload)
+            self.last_cxc_sync = fields.Datetime.now()
+            return self._notify(_('CxC sincronizadas'), _('%d registros de CxC enviados.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en CxC'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de CxP (Cuentas por Pagar)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_cxp(self):
+        """
+        Envía facturas de proveedor pendientes de pago a SEPED (cargarCxp).
+        """
+        self.ensure_one()
+        Move = self.env['account.move']
+        domain = [
+            ('move_type', '=', 'in_invoice'),
+            ('state', '=', 'posted'),
+            ('payment_state', 'in', ('not_paid', 'partial')),
+        ]
+        invoices = Move.search(domain)
+
+        if not invoices:
+            return self._notify(_('Sin CxP'), _('No hay cuentas por pagar pendientes.'), 'info')
+
+        payload_items = []
+        for inv in invoices:
+            factor = getattr(inv, 'os_currency_rate', 1.0)
+            saldo_ds = getattr(inv, 'amount_residual_usd', 0.0)
+            if not saldo_ds and inv.currency_id.name == 'USD':
+                saldo_ds = inv.amount_residual
+
+            payload_items.append({
+                'codprov': str(inv.partner_id.id),
+                'fechai': inv.invoice_date.strftime('%Y-%m-%d %H:%M:%S') if inv.invoice_date else '',
+                'codesta': '01',
+                'codusua': 'N/A',
+                'numerod': (inv.name or '').replace('-', '').replace('/', ''),
+                'tipocxp': 'COM',
+                'monto': inv.amount_total,
+                'montoneto': inv.amount_untaxed,
+                'mtotax': inv.amount_tax,
+                'saldo': inv.amount_residual,
+                'nroctrol': getattr(inv, 'l10n_ve_control_number', '') or '',
+                'notas1': f"f {inv.ref or inv.name} {inv.partner_id.name}",
+                'descrip': (inv.partner_id.name or '')[:100],
+                'codisb': self.codisb,
+                'codmoneda': inv.currency_id.name or 'USD',
+                'factorcambiario': factor,
+                'fecha': fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'saldoDs': saldo_ds,
+                'id': inv.name or str(inv.id),
+            })
+
+        payload = {
+            'codisb': self.codisb,
+            'cxp': payload_items,
+        }
+        try:
+            self._make_request('POST', '/api/cuentas/pagar/sync', payload)
+            self.last_cxp_sync = fields.Datetime.now()
+            return self._notify(_('CxP sincronizadas'), _('%d registros de CxP enviados.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en CxP'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Vendedores
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_vendedores(self):
+        """
+        Envía los usuarios marcados como vendedores a SEPED (cargarVendedor).
+        Se asume que son usuarios con ventas o en un grupo específico.
+        """
+        self.ensure_one()
+        # Buscamos usuarios activos
+        users = self.env['res.users'].search([('active', '=', True)])
+        payload_items = []
+        for user in users:
+            payload_items.append({
+                'codigo': str(user.id),
+                'nombre': user.name,
+                'tipo': '', # Opcional
+                'supervisor': '1', # Valor por defecto
+                'codisb': self.codisb,
+            })
+
+        payload = {'codisb': self.codisb, 'vendedores': payload_items}
+        try:
+            self._make_request('POST', '/api/vendedores/sync', payload)
+            self.last_vendedor_sync = fields.Datetime.now()
+            return self._notify(_('Vendedores sincronizados'), _('%d vendedores enviados.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en Vendedores'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Categorías
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_categories(self):
+        """
+        Envía las categorías de producto a SEPED (cargarCategoria).
+        """
+        self.ensure_one()
+        categories = self.env['product.category'].search([])
+        payload_items = []
+        for cat in categories:
+            payload_items.append({
+                'codcat': str(cat.id),
+                'nomcat': cat.name,
+                'codisb': self.codisb,
+            })
+
+        payload = {'codisb': self.codisb, 'categorias': payload_items}
+        try:
+            self._make_request('POST', '/api/inventario/categorias/sync', payload)
+            self.last_category_sync = fields.Datetime.now()
+            return self._notify(_('Categorías sincronizadas'), _('%d categorías enviadas.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en Categorías'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Lotes
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_lotes(self):
+        """
+        Envía los lotes de productos con sus cantidades a SEPED (cargarLotes).
+        Usamos stock.quant para obtener cantidad por lote.
+        """
+        self.ensure_one()
+        Quants = self.env['stock.quant'].search([
+            ('lot_id', '!=', False),
+            ('quantity', '>', 0),
+            ('location_id.usage', '=', 'internal'),
+        ])
+        
+        payload_items = []
+        for q in Quants:
+            lot = q.lot_id
+            payload_items.append({
+                'codpadre': lot.product_id.default_code or str(lot.product_id.id),
+                'codhijo': lot.product_id.default_code or str(lot.product_id.id),
+                'desprod': lot.product_id.name,
+                'lote': lot.name,
+                'feclote': lot.expiration_date.strftime('%Y/%m/%d') if lot.expiration_date else '2099/12/31',
+                'deposito': q.location_id.name or '',
+                'cantidad': int(q.quantity),
+                'codisb': self.codisb,
+                'nuevo': 1, # Asumimos inserción/actualización
+                'id': q.id,
+            })
+
+        payload = {'codisb': self.codisb, 'lotes': payload_items}
+        try:
+            self._make_request('POST', '/api/inventario/lotes/sync', payload)
+            self.last_lote_sync = fields.Datetime.now()
+            return self._notify(_('Lotes sincronizados'), _('%d lotes enviados.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en Lotes'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Monedas
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_monedas(self):
+        """
+        Envía las monedas activas y sus tasas de cambio a SEPED (cargarMonedas).
+        """
+        self.ensure_one()
+        currencies = self.env['res.currency'].search([('active', '=', True)])
+        payload_items = []
+        for curr in currencies:
+            # En Odoo, la tasa es 1/rate respecto a la moneda base (USD o VEF)
+            # Para SEPED, suele ser la tasa inversa (ej: 45.5)
+            factor = 1.0 / curr.rate if curr.rate else 1.0
+            
+            payload_items.append({
+                'codigo': curr.name,
+                'descrip': curr.full_name or curr.name,
+                'factor': factor,
+                'pref': 'SI' if curr == self.env.company.currency_id else 'NO',
+                'simbolo': curr.symbol,
+                'codisb': self.codisb,
+            })
+
+        payload = {'codisb': self.codisb, 'monedas': payload_items}
+        try:
+            self._make_request('POST', '/api/monedas/sync', payload)
+            self.last_moneda_sync = fields.Datetime.now()
+            return self._notify(_('Monedas sincronizadas'), _('%d monedas enviadas.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en Monedas'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Productos con Falla
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_prodfalla(self):
+        """
+        Envía productos marcados con falla o sin stock a SEPED (cargarProdFalla).
+        Por defecto enviamos productos con stock < 1.
+        """
+        self.ensure_one()
+        products = self.env['product.product'].search([
+            ('active', '=', True),
+            ('sale_ok', '=', True),
+            ('qty_available', '<=', 0),
+        ])
+        
+        payload_items = []
+        for prod in products:
+            payload_items.append({
+                'barra': prod.barcode or '',
+                'codprod': prod.default_code or str(prod.id),
+                'desprod': prod.name,
+                'marcamodelo': 'N/A',
+                'pactivo': '', # Podría mapearse a un campo específico
+                'codisb': self.codisb,
+            })
+
+        payload = {'codisb': self.codisb, 'productos_falla': payload_items}
+        try:
+            self._make_request('POST', '/api/inventario/productos/falla/sync', payload)
+            self.last_prodfalla_sync = fields.Datetime.now()
+            return self._notify(_('Prod. Falla sincronizados'), _('%d productos en falla enviados.') % len(payload_items), 'success')
+        except UserError as e:
+            return self._notify(_('Error en Prod. Falla'), str(e.args[0]), 'danger')
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Sincronización de Ventas Resumen (Ventares)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_sync_ventares(self):
+        """
+        Envía un resumen de las ventas del día a SEPED (cargarVentaRes).
+        Calcula facturas y devoluciones del día actual.
+        """
+        self.ensure_one()
+        today = fields.Date.context_today(self)
+        Move = self.env['account.move']
+        
+        # Facturas del día
+        invoices = Move.search([
+            ('move_type', '=', 'out_invoice'),
+            ('state', '=', 'posted'),
+            ('invoice_date', '=', today),
+        ])
+        # Devoluciones del día
+        refunds = Move.search([
+            ('move_type', '=', 'out_refund'),
+            ('state', '=', 'posted'),
+            ('invoice_date', '=', today),
+        ])
+
+        numfact = len(invoices)
+        totfact = sum(invoices.mapped('amount_total'))
+        numdevol = len(refunds)
+        totdevol = sum(refunds.mapped('amount_total'))
+        totventa = totfact - totdevol
+
+        payload = {
+            'id': today.strftime('%Y%m%d'),
+            'codisb': self.codisb,
+            'fecha': fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'numfact': numfact,
+            'totfact': totfact,
+            'numdevol': numdevol,
+            'totdevol': totdevol,
+            'totventa': totventa,
+        }
+
+        try:
+            self._make_request('POST', '/api/ventas/resumen/sync', payload)
+            self.last_ventares_sync = fields.Datetime.now()
+            return self._notify(_('Resumen ventas sincronizado'), _('Resumen del día %s enviado.') % today, 'success')
+        except UserError as e:
+            return self._notify(_('Error en Resumen Ventas'), str(e.args[0]), 'danger')
 
     # ─────────────────────────────────────────────────────────────────────────
     # Obtener Pedidos Pendientes de SEPED

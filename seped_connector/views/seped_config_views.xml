@@ -14,10 +14,11 @@
                 <field name="name"/>
                 <field name="base_url"/>
                 <field name="codisb"/>
-                <field name="last_product_sync"/>
-                <field name="last_stock_update"/>
-                <field name="last_client_sync"/>
-                <field name="last_order_fetch"/>
+                <field name="last_product_sync" widget="datetime"/>
+                <field name="last_client_sync" widget="datetime"/>
+                <field name="last_vendor_sync" widget="datetime"/>
+                <field name="last_invoice_sync" widget="datetime"/>
+                <field name="last_ventares_sync" widget="datetime"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -85,10 +86,80 @@
                                     confirm="¿Desea actualizar las cantidades de stock en SEPED?"/>
                             <button name="action_sync_clients"
                                     type="object"
-                                    string="Sincronizar Clientes"
+                                    string="Clientes"
                                     class="btn-secondary"
                                     icon="fa-users"
                                     confirm="¿Desea enviar todos los clientes activos a SEPED?"/>
+                            <button name="action_sync_vendors"
+                                    type="object"
+                                    string="Proveedores"
+                                    class="btn-secondary"
+                                    icon="fa-truck"
+                                    confirm="¿Desea enviar todos los proveedores activos a SEPED?"/>
+                            <button name="action_sync_invoices"
+                                    type="object"
+                                    string="Facturas"
+                                    class="btn-secondary"
+                                    icon="fa-file-text-o"
+                                    confirm="¿Desea sincronizar las facturas de Odoo con SEPED?"/>
+                            <button name="action_sync_ventares"
+                                    type="object"
+                                    string="Resumen Ventas"
+                                    class="btn-secondary"
+                                    icon="fa-bar-chart"
+                                    confirm="¿Desea enviar el resumen de ventas del día a SEPED?"/>
+                        </div>
+                        <div class="o_row mt-2">
+                             <button name="action_sync_cxc"
+                                    type="object"
+                                    string="CxC"
+                                    class="btn-secondary"
+                                    icon="fa-money"
+                                    confirm="¿Desea enviar las Cuentas por Cobrar pendientes?"/>
+                            <button name="action_sync_cxp"
+                                    type="object"
+                                    string="CxP"
+                                    class="btn-secondary"
+                                    icon="fa-credit-card"
+                                    confirm="¿Desea enviar las Cuentas por Pagar pendientes?"/>
+                            <button name="action_sync_banks"
+                                    type="object"
+                                    string="Bancos"
+                                    class="btn-secondary"
+                                    icon="fa-university"
+                                    confirm="¿Desea enviar las cuentas bancarias?"/>
+                            <button name="action_sync_monedas"
+                                    type="object"
+                                    string="Monedas"
+                                    class="btn-secondary"
+                                    icon="fa-usd"
+                                    confirm="¿Desea enviar las monedas y tasas?"/>
+                        </div>
+                        <div class="o_row mt-2">
+                             <button name="action_sync_categories"
+                                    type="object"
+                                    string="Categorías"
+                                    class="btn-secondary"
+                                    icon="fa-tags"
+                                    confirm="¿Desea enviar las categorías de productos?"/>
+                            <button name="action_sync_vendedores"
+                                    type="object"
+                                    string="Vendedores"
+                                    class="btn-secondary"
+                                    icon="fa-id-card-o"
+                                    confirm="¿Desea enviar los vendedores activos?"/>
+                            <button name="action_sync_lotes"
+                                    type="object"
+                                    string="Lotes"
+                                    class="btn-secondary"
+                                    icon="fa-barcode"
+                                    confirm="¿Desea enviar los lotes y existencias?"/>
+                            <button name="action_sync_prodfalla"
+                                    type="object"
+                                    string="Prod. Falla"
+                                    class="btn-secondary"
+                                    icon="fa-exclamation-triangle"
+                                    confirm="¿Desea enviar los productos sin stock o con falla?"/>
                         </div>
                     </group>
 
@@ -109,10 +180,20 @@
                         <group>
                             <field name="last_product_sync"/>
                             <field name="last_stock_update"/>
+                            <field name="last_client_sync"/>
+                            <field name="last_vendor_sync"/>
+                            <field name="last_vendedor_sync"/>
+                            <field name="last_moneda_sync"/>
                         </group>
                         <group>
-                            <field name="last_client_sync"/>
-                            <field name="last_order_fetch"/>
+                            <field name="last_invoice_sync"/>
+                            <field name="last_ventares_sync"/>
+                            <field name="last_cxc_sync"/>
+                            <field name="last_cxp_sync"/>
+                            <field name="last_bank_sync"/>
+                            <field name="last_category_sync"/>
+                            <field name="last_lote_sync"/>
+                            <field name="last_prodfalla_sync"/>
                         </group>
                     </group>
 
