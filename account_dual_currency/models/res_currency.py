@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup
 import requests
 import urllib3
 urllib3.disable_warnings()
+import logging
+_logger = logging.getLogger(__name__)
+
 class ResCurrency(models.Model):
     _inherit = 'res.currency'
 
@@ -36,13 +39,10 @@ class ResCurrency(models.Model):
         if self == to_currency:
             to_amount = from_amount
         else:
-            if self.env.context.get('tasa_factura'):
-                if to_currency == self.env.company.currency_id_dif:
-                    to_amount = from_amount / self.env.context.get('tasa_factura')
-                else:
-                    to_amount = from_amount * self.env.context.get('tasa_factura')
-            else:
-                to_amount = from_amount * self._get_conversion_rate(self, to_currency, company, date)
+            # DESACTIVADO: No usar tasa_factura en _convert() para evitar afectar cálculos nativos de Odoo
+            # Los campos duales se calculan directamente en _amount_all_usd() sin usar este método
+            # Esto protege completamente los campos nativos (amount_tax, amount_total, etc.)
+            to_amount = from_amount * self._get_conversion_rate(self, to_currency, company, date)
         # apply rounding
         #print("from_amount", from_amount)
         #print("to_amount", to_amount)

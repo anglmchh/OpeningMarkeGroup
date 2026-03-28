@@ -424,225 +424,184 @@ class AccountPaymentRegister(models.TransientModel):
                         _logger.exception("[AUTO-RECON] Error conciliando Pago %s con DIF: %s", payment.id, e)
 
     def _create_payments(self):
-        """
-        Crea el pago.
-        1. Fuerza 'payment_difference_handling' a 'open' siempre.
-        2. Bloquea la conciliación automática Pago ↔ Factura del super().
-        3. Si hay diferencial FX, crea el asiento FX y concilia Pago ↔ Asiento FX.
-        """
-        _logger.info("[PAY-DBG] === INICIO _create_payments (CONCILIACIÓN SOLO PAGO-FX) ===")
+        _logger.info("[PAY-DBG] === INICIO _create_payments (Versión Final Corregida) ===")
 
-        company_cur = self.company_currency_id
-        fx_bs = company_cur.round(float(self.amount_diff or 0.0))
-        has_fx_diff = not company_cur.is_zero(fx_bs)
-
-        # CRÍTICO: 1. Forzar el manejo de diferencia a 'open' SIEMPRE.
-        ctx = self.env.context.copy()
-        ctx['payment_difference_handling'] = 'open'
-        ctx['writeoff_account_id'] = False
-        ctx['writeoff_label'] = False
-        
-        # CRÍTICO: 2. Bloquear la conciliación automática Pago ↔ Factura en el super().
+        # 1. Crear el pago base (Super)
         payments = super(AccountPaymentRegister, self.with_context(
-            ctx, 
             tasa_factura=self.tax_today,
-            calcular_dual_currency=True,
-            lines_to_reconcile=self.env['account.move.line'],
+            calcular_dual_currency=True
         ))._create_payments()
 
-        if not payments or not payments.move_id:
+        if not payments or not getattr(payments, 'move_id', False):
             _logger.error("[PAY-DBG] No se obtuvo payments.move_id desde super(). Abortando.")
             return payments
 
-        invoices = self.line_ids.mapped('move_id').filtered(
-            lambda m: m.state == 'posted' and m.is_invoice(include_receipts=True)
-        )
-
-        # === 2.1. CRÍTICO: ANULAR CONCILIACIÓN AUTOMÁTICA PAGO ↔ FACTURA ===
-        pay_lines = payments.move_id.line_ids.filtered(
-            lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable')
-        )
-        inv_moves = invoices.ids
-
-        partials_to_unlink = self.env['account.partial.reconcile']
+        # -------------------------------------------------------------------------
+        # 🔍 DETECCIÓN INTELIGENTE DE LA LÍNEA DEL PARTNER
+        # -------------------------------------------------------------------------
+        # Buscamos la línea que NO es de liquidez (Banco) y que es AR/AP.
+        liquidity_account = payments.journal_id.default_account_id
         
-        for pl in pay_lines:
-            partials = pl.matched_debit_ids | pl.matched_credit_ids
-            for p in partials:
-                target_move_line = p.debit_move_id if p.debit_move_id.id != pl.id else p.credit_move_id
-                target_move = target_move_line.move_id
-                
-                if target_move.id in inv_moves:
-                    partials_to_unlink |= p
-                    
-        if partials_to_unlink:
-            _logger.info("[PAY-DBG] Eliminando %s registros de conciliación parcial automática (Pago ↔ Factura) para forzar la apertura.", len(partials_to_unlink))
-            partials_to_unlink.unlink()
-            
-            # FIX DE CACHÉ: Invalidación general sobre los modelos afectados.
-            # Usamos invalidate_recordset en los recordsets de líneas
-            pay_lines.invalidate_recordset(['amount_residual', 'amount_residual_currency'])
-            invoices.mapped('line_ids').invalidate_recordset(['amount_residual', 'amount_residual_currency'])
-            
-            moves_to_recompute_unlink = payments.move_id | invoices
-            for mv in moves_to_recompute_unlink:
-                try:
-                    if hasattr(mv, 'invalidate_cache'): mv.invalidate_cache()
-                    mv._compute_amount()
-                except Exception as e:
-                    _logger.debug("[PAY-DBG] Error de recompute/cache después de unlink: %s", e)
-        # =======================================================================
-
-        # === 3. PREPARACIÓN DE LÍNEAS AR/AP PARA LA CADENA ===
-        # Re-fetch la línea base del pago para asegurar el saldo correcto después del unlink
-        pay_arap_line_base = self.env['account.move.line'].browse(pay_lines.ids).filtered(
+        pay_arap_line = payments.move_id.line_ids.filtered(
             lambda l: l.account_id.account_type in ('asset_receivable', 'liability_payable')
+            and l.account_id != liquidity_account # Excluir cuenta de banco del diario
             and l.partner_id == self.partner_id
-            and not l.reconciled
         )[:1]
+
+        if not pay_arap_line:
+            _logger.warning("[PAY-DBG] ⚠️ No se encontró línea AR/AP en el pago. Saltando diferencial.")
+            return payments
+
+        # Capturamos la cuenta EXACTA y el saldo del pago
+        counter_account = pay_arap_line.account_id.id
         
+        # -------------------------------------------------------------------------
+        # 2. Desvincular Y FORZAR ESTADO ABIERTO (Fix Definitivo)
+        # -------------------------------------------------------------------------
+        try:
+            # Primero eliminamos los records de conciliación parcial
+            payments.move_id.line_ids.mapped('matched_debit_ids').unlink()
+            payments.move_id.line_ids.mapped('matched_credit_ids').unlink()
+            _logger.info("[PAY-DBG] Se han eliminado conciliaciones parciales del pago.")
+
+            # FIX CRÍTICO: Recalcular residual y forzar estado abierto.
+            # Esto corrige el error "Está tratando de conciliar algunos asientos que ya han sido conciliados."
+            payments.move_id.line_ids._compute_amount_residual()
+            
+            # REFRESCAR: Asegurar que tenemos la versión más reciente de la línea
+            pay_arap_line = self.env['account.move.line'].browse(pay_arap_line.id)
+            if pay_arap_line.reconciled:
+                pay_arap_line.write({'reconciled': False}) 
+            
+            _logger.info("[PAY-DBG] Forzado re-cálculo de residuales y estado 'abierto'.")
+            
+        except Exception as e:
+            _logger.warning("[PAY-DBG] No se pudo desvincular el pago (quizás ya estaba libre): %s", e)
+
+        # -------------------------------------------------------------------------
+        # 💰 CÁLCULO Y CREACIÓN DEL DIFERENCIAL (FX)
+        # -------------------------------------------------------------------------
+        fx_bs = self.company_currency_id.round(float(self.amount_diff or 0.0))
+        company_cur = self.company_currency_id
         move_fx = self.env['account.move']
-        
-        # Guardamos el balance de inicio para el cálculo esperado 
-        pay_line_start_balance = 0.0
-        if pay_arap_line_base:
-            # FIX DE CACHÉ: Invalidación antes de leer el balance START
-            pay_arap_line_base.invalidate_recordset(['balance', 'amount_residual']) 
-            pay_line_start_balance = abs(pay_arap_line_base.balance)
-            _logger.info("[PAY-DBG] [BALANCE START] Pago AR/AP Line ID %s. Balance INICIO (Total Pago): %.4f", pay_arap_line_base.id, pay_line_start_balance)
-        
-        
-        # MODIFICACIÓN CRÍTICA: Se omite la validación de journal_id_dif del IF
-        if has_fx_diff and pay_arap_line_base:
-            
-            # ASIGNACIÓN DEL DIARIO FX: Usa el diario diferencial si existe, si no, usa el diario de pago.
-            journal_dif = self.journal_id_dif or self.journal_id
-            
-            _logger.info("[PAY-DBG] FX CHECK: FX_BS=%.4f | has_fx_diff=True | pay_line_found=True -> INICIANDO FX LOGIC.", fx_bs)
-            
-            company = self.company_id
-            ref_cur = self.currency_id_dif or company.currency_id_dif
-            inv_first = invoices[:1]
-            mt = inv_first.move_type if inv_first else False
-            is_vendor = bool(mt in ('in_invoice', 'in_refund', 'in_receipt')) or (self.payment_type == 'outbound')
-            abs_fx = abs(fx_bs)
-            counter_account = pay_arap_line_base.account_id.id
-            
-            # Lógica de Asiento FX para determinar débito/crédito
-            income_acc = company.income_currency_exchange_account_id.id
-            expense_acc = company.expense_currency_exchange_account_id.id
 
-            if is_vendor:
-                account_dif_fx = expense_acc if fx_bs > 0 else income_acc
+        if not company_cur.is_zero(fx_bs):
+            # Lógica de Signos AUTOMÁTICA (Bulletproof)
+            # Queremos que la diferencia RESTE disponibilidad al pago.
+            monto_fx = abs(fx_bs)
+            
+            if pay_arap_line.debit > 0:
+                # Pago es Débito (e.g., Pago a proveedor) -> FX debe ser Crédito
+                partner_debit, partner_credit = 0.0, monto_fx
             else:
-                account_dif_fx = income_acc if fx_bs > 0 else expense_acc
+                # Pago es Crédito (e.g., Pago de cliente) -> FX debe ser Débito
+                partner_debit, partner_credit = monto_fx, 0.0
 
-            if is_vendor:
-                partner_debit = abs_fx if fx_bs < 0 else 0.0
-                partner_credit = abs_fx if fx_bs > 0 else 0.0
-            else:
-                partner_debit = abs_fx if fx_bs > 0 else 0.0
-                partner_credit = abs_fx if fx_bs < 0 else 0.0
-                
+            # Definir cuentas de Gasto/Ingreso según el signo de fx_bs
+            income_acc = self.company_id.income_currency_exchange_account_id.id
+            expense_acc = self.company_id.expense_currency_exchange_account_id.id
+            account_dif_fx = expense_acc if fx_bs > 0 else income_acc
+
+            # La contrapartida de la cuenta de Gasto/Ingreso
             dif_debit = partner_credit
             dif_credit = partner_debit
-
-            # <LÓGICA DE CREACIÓN DEL move_fx>
-            label_fx = (self.writeoff_label + ' - Dif Camb ' + (self.communication or '')).strip()
-
-            def _mk_line_fx(account_id, debit=0.0, credit=0.0, label=label_fx):
-                vals = {
-                    'partner_id': self.partner_id.id if account_id == counter_account else False,
-                    'date': self.payment_date,
+            
+            # --- Helper para crear líneas ---
+            def _mk_line_fx(account_id, debit, credit, label):
+                return (0, 0, {
+                    'partner_id': self.partner_id.id,
                     'account_id': account_id,
                     'name': label,
                     'debit': debit,
                     'credit': credit,
-                }
-                return (0, 0, vals)
+                    'currency_id': company_cur.id,
+                })
 
-            partner_line_fx = _mk_line_fx(counter_account, debit=partner_debit, credit=partner_credit)
-            dif_line_fx = _mk_line_fx(account_dif_fx, debit=dif_debit, credit=dif_credit)
+            label_fx = (self.communication or '') + " (Dif. Cambiaria)"
+            
+            # Crear asiento FX
+            partner_line_vals = _mk_line_fx(counter_account, partner_debit, partner_credit, label_fx)
+            dif_line_vals = _mk_line_fx(account_dif_fx, dif_debit, dif_credit, label_fx)
 
-            # CRÍTICO: NO pasamos currency_id_dif para que NO calcule valores duales.
-            move_vals_fx = {
+            move_fx = self.env['account.move'].create({
                 'ref': label_fx,
-                'line_ids': [dif_line_fx, partner_line_fx],
-                'journal_id': journal_dif.id,
                 'date': self.payment_date,
-                'state': 'draft',
+                'journal_id': self.journal_id_dif.id or self.journal_id.id,
+                'line_ids': [dif_line_vals, partner_line_vals],
                 'move_type': 'entry',
-            }
-            move_fx = self.env['account.move'].create(move_vals_fx)
-            move_fx._post(soft=False)
-            payments.move_id_dif = move_fx
-            # </FIN LÓGICA DE CREACIÓN DEL move_fx>
+            })
+            move_fx.action_post()
+            payments.move_id_dif = move_fx # Guardamos referencia
 
-            fx_partner_line = move_fx.line_ids.filtered(
-                lambda l: l.account_id.id == counter_account and l.partner_id == self.partner_id
-            )
+            # ---------------------------------------------------------------------
+            # 🔗 CONCILIACIÓN 1: PAGO (Parcial) <-> DIFERENCIA
+            # ---------------------------------------------------------------------
+            try:
+                fx_line_to_rec = move_fx.line_ids.filtered(
+                    lambda l: l.account_id.id == counter_account and l.partner_id == self.partner_id
+                )
+                
+                # REFRESCAR: Asegurar que tenemos la versión más reciente de las líneas
+                pay_arap_line = self.env['account.move.line'].browse(pay_arap_line.id)
+                if fx_line_to_rec:
+                    fx_line_to_rec = self.env['account.move.line'].browse(fx_line_to_rec.ids)
 
-            # CRÍTICO: Conciliación Pago ↔ Asiento FX por el monto del diferencial (abs_fx)
-            if pay_arap_line_base.balance < 0:
-                debit_line, credit_line = fx_partner_line, pay_arap_line_base
-            else:
-                debit_line, credit_line = pay_arap_line_base, fx_partner_line
+                if not fx_line_to_rec:
+                    _logger.warning("[PAY-DBG] ⚠️ No se encontró línea de diferencial para conciliar.")
+                else:
+                    # 1. Verificar y corregir PAY_ARAP_LINE
+                    if pay_arap_line.reconciled:
+                        _logger.warning("[PAY-DBG] ⚠️ La línea de pago %s sigue marcada como conciliada. Intentando liberar.", pay_arap_line.id)
+                        # Si está conciliada, verificamos si podemos liberarla
+                        pay_arap_line.mapped('matched_debit_ids').unlink()
+                        pay_arap_line.mapped('matched_credit_ids').unlink()
+                        pay_arap_line._compute_amount_residual()
+                        
+                        # Forzar escritura si sigue True
+                        if pay_arap_line.reconciled:
+                             _logger.info("[PAY-DBG] 🔨 Forzando reconciled=False en Pago %s.", pay_arap_line.id)
+                             pay_arap_line.write({'reconciled': False})
 
-            if abs_fx > 0 and debit_line and credit_line and debit_line.account_id == credit_line.account_id:
-                try:
-                    self.env['account.partial.reconcile'].create({
-                        'debit_move_id': debit_line.id,
-                        'credit_move_id': credit_line.id,
-                        'amount': abs_fx, 
-                        # FIX CRÍTICO: Aseguramos que la conciliación no use moneda extranjera (USD)
-                        'debit_amount_currency': 0.0,
-                        'credit_amount_currency': 0.0,
-                    })
-                    _logger.info(
-                        "[PAY-DBG] CONCILIACIÓN PARCIAL EXITOSA: Pago %s y Asiento FX %s conciliados por %.4f Bs (DIFERENCIAL).",
-                        payments.id, move_fx.id, abs_fx
-                    )
-                except Exception as e:
-                    _logger.exception("[PAY-DBG] Error creando account.partial.reconcile (Pago ↔ FX): %s", e)
-        else:
-            _logger.info("[PAY-DBG] SALIDA del bloque FX. Diferencial (%.4f) o Línea de Pago no válida.", fx_bs)
+                    # 2. Verificar y corregir FX_LINE_TO_REC
+                    if fx_line_to_rec.reconciled:
+                        _logger.info("[PAY-DBG] 🔨 Forzando reconciled=False en FX %s.", fx_line_to_rec.id)
+                        fx_line_to_rec.write({'reconciled': False})
 
+                    # 3. Conciliar
+                    _logger.info("[PAY-DBG] Intentando conciliar Pago %s (Res: %.2f) con FX %s (Res: %.2f)", 
+                                 pay_arap_line.id, pay_arap_line.amount_residual, 
+                                 fx_line_to_rec.id, fx_line_to_rec.amount_residual)
+                    
+                    (pay_arap_line + fx_line_to_rec).reconcile()
+                    _logger.info("[PAY-DBG] ✅ Conciliado Pago con Diferencial. Saldo ajustado a: %.2f", pay_arap_line.amount_residual)
 
-        # === 4. NO SE REALIZA CONCILIACIÓN FINAL CON FACTURA ===
-        _logger.info("[PAY-DBG] Omitting final reconcile with Invoice(s) per user request.")
+            except Exception as e:
+                _logger.error("[PAY-DBG] Falló conciliación Pago-FX (Error final, revisar data): %s", e)
+
+        # -------------------------------------------------------------------------
+        # 🔗 CONCILIACIÓN 2: PAGO (Restante) <-> FACTURAS ORIGINALES
+        # -------------------------------------------------------------------------
+        invoices = self.line_ids.mapped('move_id').filtered(
+            lambda m: m.is_invoice(include_receipts=True) and m.state == 'posted'
+        )
         
-        # === 5. Recomputes final de seguridad ===
-        moves_to_recompute = payments.move_id | move_fx | invoices
+        # SE OMITE POR REQUERIMIENTO: El usuario desea conciliar manualmente el pago con la factura.
+        _logger.info("[PAY-DBG] ⏭️ Saltando conciliación automática con factura (Modo Manual).")
+
+        # 3. Recomputes (Aseguramos que todos los saldos se actualicen)
+        moves_to_recompute = self.env['account.move']
+        moves_to_recompute |= payments.move_id
+        if move_fx: 
+            moves_to_recompute |= move_fx
+        if invoices: 
+            moves_to_recompute |= invoices
         
-        # Forzamos un recompute completo después de la conciliación
         for mv in moves_to_recompute:
             try:
-                # FIX CRÍTICO: Usamos el método correcto en el recordset para invalidar el caché.
-                mv.line_ids.invalidate_recordset(['amount_residual', 'amount_residual_currency'])
-                
-                if hasattr(mv, 'invalidate_cache'): mv.invalidate_cache()
+                mv.line_ids._compute_amount_residual()
                 mv._compute_amount()
-            except Exception as e:
-                _logger.debug("[PAY-DBG] Ignorado error en recompute final: %s", e)
-        
-        # FIX CRÍTICO: Invalida el cache globalmente (último recurso)
-        self.env.invalidate_all() 
-        
-        # --- DEBUG: CHECK ENDING BALANCE ---
-        if payments.move_id:
-            try:
-                # Re-fetch the line to ensure we are reading fresh data
-                pay_line_final = self.env['account.move.line'].browse(pay_arap_line_base.id)
-                
-                # Forzar un último read para asegurar que el ORM tiene el valor correcto.
-                pay_line_final.refresh_all_models()
-                residual = abs(pay_line_final.amount_residual)
-                expected_residual = pay_line_start_balance - fx_bs if 'pay_line_start_balance' in locals() else 0.0
-                
-                _logger.info("[PAY-DBG] [BALANCE END] Pago Line ID %s. RESIDUAL ACTUAL (amount_residual): %.4f (Esperado: %.4f)", pay_line_final.id, residual, expected_residual)
-            except Exception as e:
-                _logger.debug("[PAY-DBG] Error al calcular balance final: %s", e)
-        # -----------------------------------
+            except:
+                pass
 
         _logger.info("[PAY-DBG] === FIN _create_payments ===")
         return payments

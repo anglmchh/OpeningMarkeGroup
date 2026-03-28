@@ -15,66 +15,67 @@ class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
     debit_usd = fields.Monetary(currency_field='currency_id_dif', string='Débito Ref', store=True, compute="_debit_usd",
-                                readonly=False, )
+                                 readonly=False, )
     credit_usd = fields.Monetary(currency_field='currency_id_dif', string='Crédito Ref', store=True,
                                  compute="_credit_usd", readonly=False)
-    tax_today = fields.Float(related="move_id.tax_today",
-                             store=True, digits='Dual_Currency_rate')
-    currency_id_dif = fields.Many2one(
-        "res.currency", related="move_id.currency_id_dif", store=True)
-
+    tax_today = fields.Float(related="move_id.tax_today", store=True, digits='Dual_Currency_rate')
+    currency_id_dif = fields.Many2one("res.currency", related="move_id.currency_id_dif", store=True)
+    
     # CAMPOS ELIMINADOS: price_unit_usd y price_subtotal_usd
-
+    
     # Campos de referencia para precio unitario y subtotal
     ref_unit = fields.Float(
-        string='Precio Unit. Ref.',
+        string='Precio Unit. Ref.', 
         store=True,
         digits=(16, 2),  # 2 decimales
         help="Precio unitario en moneda de referencia"
     )
-
+    
     subtotal_ref = fields.Float(
-        string='Subtotal Ref.',
+        string='Subtotal Ref.', 
         store=True,
         digits=(16, 2),  # 2 decimales
         help="Subtotal en moneda de referencia (ref_unit * quantity)"
     )
-
+    
     amount_residual_usd = fields.Monetary(string='Residual Amount USD', computed='_compute_amount_residual_usd', store=True,
-                                          help="The residual amount on a journal item expressed in the company currency.")
+                                        help="The residual amount on a journal item expressed in the company currency.")
     balance_usd = fields.Monetary(string='Balance Ref.',
                                   currency_field='currency_id_dif', store=True, readonly=False,
                                   compute='_compute_balance_usd',
                                   default=lambda self: self._compute_balance_usd(),
                                   help="Technical field holding the debit_usd - credit_usd in order to open meaningful graph views from reports")
 
-    @api.depends('currency_id', 'company_id', 'move_id.date', 'move_id.tax_today')
+    @api.depends('currency_id', 'company_id', 'move_id.date','move_id.tax_today')
     def _compute_currency_rate(self):
-
-        @lru_cache()
-        def get_rate(from_currency, to_currency, company, date):
-            rate = self.env['res.currency']._get_conversion_rate(
-                from_currency=from_currency,
-                to_currency=to_currency,
-                company=company,
-                date=date,
-            )
-            return rate
+        # Mantener el comportamiento estándar de Odoo y solo ajustar cuando corresponde.
+        super(AccountMoveLine, self)._compute_currency_rate()
 
         for line in self:
-            # 1. Validar si la moneda de la línea es la misma que la base (Bolívares)
-            is_company_currency = line.currency_id == line.company_id.currency_id
+            if not line.company_id or not line.currency_id:
+                continue
 
-            if is_company_currency:
-                # Si es Bolívares, la tasa DEBE ser 1.0 para que Odoo no multiplique los impuestos
+            company_currency = line.company_id.currency_id
+
+            # Si la línea está en moneda de compañía (Bs), la tasa debe ser 1.
+            if line.currency_id == company_currency:
                 line.currency_rate = 1.0
-            else:
-                # Si es Dólares (Moneda extranjera), aplicamos la inversa de la tasa dual
-                tasa = line.move_id.tax_today if line.move_id else 0.0
-                line.currency_rate = (1 / tasa) if tasa > 0 else 1.0
+                continue
 
-        self.env.context = dict(
-            self.env.context, tasa_factura=None, calcular_dual_currency=False)
+            # Si la línea está en moneda de referencia (USD) y hay `tax_today`, fijar la tasa.
+            if line.move_id and line.currency_id == line.move_id.currency_id_dif and line.move_id.tax_today and line.move_id.tax_today > 0:
+                # currency_rate = cantidad de moneda extranjera por 1 unidad de moneda compañía.
+                line.currency_rate = 1.0 / line.move_id.tax_today
+
+            _logger.info(
+                "[DUAL] _compute_currency_rate LINE %s: tax_today=%s, rate=%s, move=%s, line_cur=%s, comp_cur=%s",
+                line.id,
+                line.move_id.tax_today if line.move_id else None,
+                line.currency_rate,
+                line.move_id.id if line.move_id else None,
+                line.currency_id.name,
+                company_currency.name,
+            )
 
     @api.onchange('amount_currency')
     def _onchange_amount_currency(self):
@@ -83,21 +84,21 @@ class AccountMoveLine(models.Model):
 
     def write(self, vals):
         """Override write para sincronizar price_unit y ref_unit al guardar (2 decimales)"""
+        # _logger.info("[DUAL] AccountMoveLine write(): IDs=%s, vals=%s", self.ids, vals.keys())
+        # Uncomment above to trace writes
         result = super(AccountMoveLine, self).write(vals)
+        
+        if self.env.context.get('skip_usd_recompute'):
+            return result
 
         # Después de guardar, recalcular los campos según lo que se modificó
         for line in self:
-            # Solo aplicar en líneas comerciales de factura (no impuestos, plazos, notas o asientos).
-            if not line.move_id.is_invoice(include_receipts=True):
+            if line.display_type in ('line_section', 'line_note'):
                 continue
-            if line.display_type in ('line_section', 'line_note', 'tax', 'payment_term'):
-                continue
-            if line.tax_repartition_line_id:
-                continue
-
+                
             tax_today = line.move_id.tax_today if line.move_id.tax_today else 0.0
             values_to_update = {}
-
+            
             # Si se modificó price_unit, recalcular ref_unit y subtotal_ref
             if 'price_unit' in vals:
                 if tax_today > 0:
@@ -106,77 +107,62 @@ class AccountMoveLine(models.Model):
                     values_to_update['ref_unit'] = ref_unit_calculated
                 else:
                     values_to_update['ref_unit'] = 0.0
-
+            
             # Si se modificó ref_unit, recalcular price_unit y subtotal_ref
-            elif 'ref_unit' in vals:
-                if tax_today > 0:
-                    # Calcular con 2 decimales
-                    price_unit_calculated = round(line.ref_unit * tax_today, 2)
-                    values_to_update['price_unit'] = price_unit_calculated
-                else:
-                    values_to_update['price_unit'] = 0.0
-
+            # 2025-12-09: DESHABILITADO POR SOLICITUD DEL CLIENTE
+            # Se requiere que los montos en Bs (Master) NO sean afectados por cambios en Ref/USD.
+            # elif 'ref_unit' in vals:
+            #     if tax_today > 0:
+            #         # Calcular con 2 decimales
+            #         price_unit_calculated = round(line.ref_unit * tax_today, 2)
+            #         values_to_update['price_unit'] = price_unit_calculated
+            #     else:
+            #         values_to_update['price_unit'] = 0.0
+            
             # Siempre recalcular subtotal_ref si cambió ref_unit o quantity
             if 'ref_unit' in vals or 'quantity' in vals or 'price_unit' in vals:
-                subtotal_ref_calculated = round(
-                    line.ref_unit * line.quantity, 2)
+                subtotal_ref_calculated = round(line.ref_unit * line.quantity, 2)
                 values_to_update['subtotal_ref'] = subtotal_ref_calculated
-
+            
             # Actualizar los valores calculados si hay cambios
             if values_to_update:
                 super(AccountMoveLine, line).write(values_to_update)
-
+        
         return result
 
     @api.model_create_multi
     def create(self, vals_list):
         """Override create para sincronizar price_unit y ref_unit al crear (2 decimales)"""
         for vals in vals_list:
-            # En algunas rutas de creación (PO -> factura) display_type puede venir vacío
-            # y en esta base se valida como obligatorio.
-            if not vals.get('display_type'):
-                if vals.get('tax_repartition_line_id'):
-                    vals['display_type'] = 'tax'
-                elif vals.get('exclude_from_invoice_tab'):
-                    vals['display_type'] = 'payment_term'
-                else:
-                    vals['display_type'] = 'product'
-
+            if 'display_type' not in vals or vals['display_type'] is None:
+                vals['display_type'] = 'product'
+            
             # Obtener la tasa del move_id si existe
             move_id = vals.get('move_id')
             if move_id:
                 move = self.env['account.move'].browse(move_id)
-                is_invoice_line = move.is_invoice(include_receipts=True)
-                is_blocked_display = vals.get('display_type') in (
-                    'line_section', 'line_note', 'tax', 'payment_term')
-                is_tax_line = bool(vals.get('tax_repartition_line_id'))
-
-                if not is_invoice_line or is_blocked_display or is_tax_line:
-                    continue
-
                 tax_today = move.tax_today if move.tax_today else 0.0
-
+                
                 # Si se proporciona price_unit pero no ref_unit, calcular ref_unit con 2 decimales
                 if 'price_unit' in vals and 'ref_unit' not in vals:
                     if tax_today > 0:
-                        vals['ref_unit'] = round(
-                            vals['price_unit'] / tax_today, 2)
+                        vals['ref_unit'] = round(vals['price_unit'] / tax_today, 2)
                     else:
                         vals['ref_unit'] = 0.0
-
+                
                 # Si se proporciona ref_unit pero no price_unit, calcular price_unit con 2 decimales
-                elif 'ref_unit' in vals and 'price_unit' not in vals:
-                    if tax_today > 0:
-                        vals['price_unit'] = round(
-                            vals['ref_unit'] * tax_today, 2)
-                    else:
-                        vals['price_unit'] = 0.0
-
+                # 2025-12-09: DESHABILITADO POR SOLICITUD DEL CLIENTE
+                # elif 'ref_unit' in vals and 'price_unit' not in vals:
+                #     if tax_today > 0:
+                #         vals['price_unit'] = round(vals['ref_unit'] * tax_today, 2)
+                #     else:
+                #         vals['price_unit'] = 0.0
+                
                 # Calcular subtotal_ref con 2 decimales
                 quantity = vals.get('quantity', 1.0)
                 ref_unit = vals.get('ref_unit', 0.0)
                 vals['subtotal_ref'] = round(ref_unit * quantity, 2)
-
+        
         return super(AccountMoveLine, self).create(vals_list)
 
     # MÉTODOS ELIMINADOS: _onchange_price_unit_usd, _onchange_product_id, _price_unit_usd, _price_subtotal_usd
@@ -190,7 +176,7 @@ class AccountMoveLine(models.Model):
     def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
         if 'tax_today' not in fields:
             return super(AccountMoveLine, self).read_group(domain, fields, groupby, offset=offset, limit=limit,
-                                                           orderby=orderby, lazy=lazy)
+                                                             orderby=orderby, lazy=lazy)
         res = super(AccountMoveLine, self).read_group(domain, fields, groupby, offset=offset, limit=limit,
                                                       orderby=orderby, lazy=lazy)
         for group in res:
@@ -199,60 +185,53 @@ class AccountMoveLine(models.Model):
                 group['tax_today'] = 0
         return res
 
-    @api.depends('amount_currency', 'tax_today', 'debit')
+    @api.depends('amount_currency', 'tax_today','debit')
     def _debit_usd(self):
         for rec in self:
             if not rec.debit == 0:
                 if rec.move_id.currency_id == self.env.company.currency_id:
-                    amount_currency = (rec.amount_currency if rec.amount_currency > 0 else (
-                        rec.amount_currency * -1))
-                    rec.debit_usd = (amount_currency /
-                                     rec.tax_today) if rec.tax_today > 0 else 0
+                    amount_currency = (rec.amount_currency if rec.amount_currency > 0 else (rec.amount_currency * -1))
+                    rec.debit_usd = (amount_currency / rec.tax_today) if rec.tax_today > 0 else 0
                 else:
-                    rec.debit_usd = (rec.amount_currency if rec.amount_currency > 0 else (
-                        rec.amount_currency * -1))
+                    rec.debit_usd = (rec.amount_currency if rec.amount_currency > 0 else (rec.amount_currency * -1))
             else:
                 rec.debit_usd = 0
 
-    @api.depends('amount_currency', 'tax_today', 'credit')
+    @api.depends('amount_currency', 'tax_today','credit')
     def _credit_usd(self):
         for rec in self:
             if not rec.credit == 0:
                 if rec.move_id.currency_id == self.env.company.currency_id:
-                    amount_currency = (rec.amount_currency if rec.amount_currency > 0 else (
-                        rec.amount_currency * -1))
-                    rec.credit_usd = (
-                        amount_currency / rec.tax_today) if rec.tax_today > 0 else 0
+                    amount_currency = (rec.amount_currency if rec.amount_currency > 0 else (rec.amount_currency * -1))
+                    rec.credit_usd = (amount_currency / rec.tax_today) if rec.tax_today > 0 else 0
                 else:
-                    rec.credit_usd = (rec.amount_currency if rec.amount_currency > 0 else (
-                        rec.amount_currency * -1))
+                    rec.credit_usd = (rec.amount_currency if rec.amount_currency > 0 else (rec.amount_currency * -1))
             else:
                 rec.credit_usd = 0
 
-    @api.depends('debit', 'credit', 'debit_usd', 'credit_usd', 'amount_currency', 'account_id', 'currency_id', 'move_id.state',
-                 'company_id',
-                 'matched_debit_ids', 'matched_credit_ids')
+    @api.depends('debit','credit','debit_usd', 'credit_usd', 'amount_currency', 'account_id', 'currency_id', 'move_id.state',
+                  'company_id',
+                  'matched_debit_ids', 'matched_credit_ids')
     def _compute_amount_residual_usd(self):
         for line in self:
             if line.id and (line.account_id.reconcile or line.account_id.account_type in ('asset_cash', 'liability_credit_card')):
                 reconciled_balance = sum(line.matched_credit_ids.mapped('amount_usd')) \
-                    - sum(line.matched_debit_ids.mapped('amount_usd'))
+                                   - sum(line.matched_debit_ids.mapped('amount_usd'))
 
-                line.amount_residual_usd = (
-                    line.debit_usd - line.credit_usd) - reconciled_balance
+                line.amount_residual_usd = (line.debit_usd - line.credit_usd) - reconciled_balance
 
                 line.reconciled = (line.amount_residual_usd == 0)
             else:
                 line.amount_residual_usd = 0.0
                 line.reconciled = False
 
+
     @api.model
     def _reconcile_plan(self, reconciliation_plan):
         disable_partial_exchange_diff = bool(
             self.env['ir.config_parameter'].sudo().get_param('account.disable_partial_exchange_diff'))
 
-        plan_list, all_amls = self._optimize_reconciliation_plan(
-            reconciliation_plan)
+        plan_list, all_amls = self._optimize_reconciliation_plan(reconciliation_plan)
 
         all_amls.move_id
         all_amls.matched_debit_ids
@@ -278,17 +257,16 @@ class AccountMoveLine(models.Model):
         for plan in plan_list:
             plan_results = self \
                 .with_context(
-                    no_exchange_difference=self._context.get('no_exchange_difference') or disable_partial_exchange_diff) \
+                no_exchange_difference=self._context.get('no_exchange_difference') or disable_partial_exchange_diff) \
                 ._prepare_reconciliation_plan(plan, aml_values_map)
             all_plan_results.append(plan_results)
             for results in plan_results:
                 partials_values_list.append(results['partial_values'])
 
-        partials = self.env['account.partial.reconcile'].create(
-            partials_values_list)
+        partials = self.env['account.partial.reconcile'].create(partials_values_list)
         for parcial in partials:
             amount_usd = min(abs(parcial.debit_move_id.amount_residual_usd),
-                             abs(parcial.credit_move_id.amount_residual_usd))
+                                 abs(parcial.credit_move_id.amount_residual_usd))
             parcial.write({'amount_usd': abs(amount_usd)})
         start_range = 0
         for plan_results, plan in zip(all_plan_results, plan_list):
@@ -296,8 +274,7 @@ class AccountMoveLine(models.Model):
             plan['partials'] = partials[start_range:start_range + size]
             start_range += size
 
-        exchange_moves = self._create_exchange_difference_moves(
-            exchange_diff_values_list)
+        exchange_moves = self._create_exchange_difference_moves(exchange_diff_values_list)
         for index, exchange_move in zip(exchange_diff_partial_index, exchange_moves):
             partials[index].exchange_move_id = exchange_move
 
@@ -362,12 +339,10 @@ class AccountMoveLine(models.Model):
                 for aml in involved_amls:
                     if not aml.company_currency_id.is_zero(aml.amount_residual):
                         exchange_lines_to_fix += aml
-                        amounts_list.append(
-                            {'amount_residual': aml.amount_residual})
+                        amounts_list.append({'amount_residual': aml.amount_residual})
                     elif not aml.currency_id.is_zero(aml.amount_residual_currency):
                         exchange_lines_to_fix += aml
-                        amounts_list.append(
-                            {'amount_residual_currency': aml.amount_residual_currency})
+                        amounts_list.append({'amount_residual_currency': aml.amount_residual_currency})
                     exchange_max_date = max(exchange_max_date, aml.date)
                 exchange_diff_values = exchange_lines_to_fix._prepare_exchange_difference_move_vals(
                     amounts_list,
@@ -385,14 +360,12 @@ class AccountMoveLine(models.Model):
                     exchange_diff_values_list.append(exchange_diff_values)
                     full_batch['caba_lines_to_reconcile'] = caba_lines_to_reconcile
 
-        exchange_moves = self._create_exchange_difference_moves(
-            exchange_diff_values_list)
+        exchange_moves = self._create_exchange_difference_moves(exchange_diff_values_list)
         for fulL_batch_index, exchange_move in zip(exchange_diff_full_batch_index, exchange_moves):
             full_batch = full_batches[fulL_batch_index]
             amls = full_batch['amls']
             full_batch['exchange_move'] = exchange_move
-            exchange_move_lines = exchange_move.line_ids.filtered(
-                lambda line: line.account_id == amls.account_id)
+            exchange_move_lines = exchange_move.line_ids.filtered(lambda line: line.account_id == amls.account_id)
             full_batch['amls'] |= exchange_move_lines
 
         full_reconcile_values_list = []
