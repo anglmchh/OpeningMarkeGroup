@@ -557,16 +557,18 @@ class SepedConfig(models.Model):
                 'vencidoDs': float(vencido_ds or 0.0),
             }
 
-            payload = {'proveedores': [item]}
+            # Eliminar campos nulos antes de enviar (Laravel: null falla 'required', ausente pasa 'sometimes')
+            item_clean = {k: v for k, v in item.items() if v is not None}
+            payload = {'proveedores': [item_clean]}
             try:
                 self._make_request('POST', '/api/proveedores/cargar', payload)
                 total_sent += 1
             except UserError as e:
                 errors.append(
-                    '%s (id=%s): %s\nDATA: %s' % (
+                    '%s (id=%s): %s\nDATA enviada: %s' % (
                         partner.name, partner.id,
                         str(e.args[0]),
-                        _json.dumps(item, ensure_ascii=False),
+                        _json.dumps(item_clean, ensure_ascii=False),
                     )
                 )
 
