@@ -509,62 +509,64 @@ class SepedConfig(models.Model):
         total_sent = 0
         errors = []
 
-        for i in range(0, len(vendors), self.batch_size):
-            batch = vendors[i:i + self.batch_size]
-            payload_items = []
-            for partner in batch:
-                # Construir dirección
-                address_parts = filter(None, [partner.street, partner.street2, partner.city])
-                direccion = ', '.join(address_parts) or ''
-                
-                # Plazo de pago
-                diascred = 0
-                if partner.property_supplier_payment_term_id:
-                    term_lines = partner.property_supplier_payment_term_id.line_ids
-                    if term_lines:
-                        diascred = int(term_lines[0].days or 0)
+        import json as _json
+        for partner in vendors:
+            # Construir dirección
+            address_parts = filter(None, [partner.street, partner.street2, partner.city])
+            direccion = ', '.join(address_parts) or ''
 
-                # Datos financieros (si están disponibles)
-                # OJO: Los campos de saldo dual currency dependen del módulo instalado
-                saldo = getattr(partner, 'total_due', 0.0)
-                # Intento obtener saldo en USD si existe el campo del módulo dual_currency
-                saldo_ds = getattr(partner, 'total_due_usd', 0.0)
-                vencido = getattr(partner, 'total_overdue', 0.0)
-                vencido_ds = getattr(partner, 'total_overdue_usd', 0.0)
+            # Plazo de pago
+            diascred = 0
+            if partner.property_supplier_payment_term_id:
+                term_lines = partner.property_supplier_payment_term_id.line_ids
+                if term_lines:
+                    diascred = int(term_lines[0].days or 0)
 
-                payload_items.append({
-                    'codprov': str(partner.id),
-                    'nombre': partner.name or '',
-                    'rif': getattr(partner, 'rif', '') or '',
-                    'direccion': direccion,
-                    'telefono': partner.phone or partner.mobile or '',
-                    'contacto': partner.name or '', # Podría ser un contacto hijo
-                    'estado': 'ACTIVO' if partner.active else 'INACTIVO',
-                    'email': partner.email or '',
-                    'diascred': diascred,
-                    'saldo': saldo,
-                    'codisb': self.codisb,
-                    'vencido': vencido,
-                    'saldoDs': saldo_ds,
-                    'vencidoDs': vencido_ds,
-                })
+            # Datos financieros
+            saldo = getattr(partner, 'total_due', 0.0)
+            saldo_ds = getattr(partner, 'total_due_usd', 0.0)
+            vencido = getattr(partner, 'total_overdue', 0.0)
+            vencido_ds = getattr(partner, 'total_overdue_usd', 0.0)
 
-            payload = {
+            # RIF: campo propio de la localización venezolana, fallback a vat
+            rif = getattr(partner, 'rif', '') or partner.vat or ''
+
+            item = {
+                'codprov': str(partner.id),
+                'nombre': partner.name or '',
+                'rif': rif,
+                'direccion': direccion,
+                'telefono': partner.phone or partner.mobile or '',
+                'contacto': partner.name or '',
+                'estado': 'ACTIVO' if partner.active else 'INACTIVO',
+                'email': partner.email or '',
+                'diascred': diascred,
+                'saldo': float(saldo or 0.0),
                 'codisb': self.codisb,
-                'proveedores': payload_items,
+                'vencido': float(vencido or 0.0),
+                'saldoDs': float(saldo_ds or 0.0),
+                'vencidoDs': float(vencido_ds or 0.0),
             }
+
+            payload = {'codisb': self.codisb, 'proveedores': [item]}
             try:
-                result = self._make_request('POST', '/api/proveedores/cargar', payload)
-                total_sent += len(payload_items)
+                self._make_request('POST', '/api/proveedores/cargar', payload)
+                total_sent += 1
             except UserError as e:
-                errors.append(str(e.args[0]))
+                errors.append(
+                    '%s (id=%s): %s\nDATA: %s' % (
+                        partner.name, partner.id,
+                        str(e.args[0]),
+                        _json.dumps(item, ensure_ascii=False),
+                    )
+                )
 
         self.last_vendor_sync = fields.Datetime.now()
 
         if errors:
             return self._notify(
                 _('Sincronización parcial'),
-                _('%d proveedores enviados con %d errores:\n%s') % (total_sent, len(errors), '\n'.join(errors)),
+                _('%d proveedores enviados con %d errores:\n%s') % (total_sent, len(errors), '\n---\n'.join(errors)),
                 'warning',
             )
         return self._notify(
