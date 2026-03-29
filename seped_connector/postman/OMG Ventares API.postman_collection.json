@@ -1,0 +1,71 @@
+{
+  "info": {
+    "_postman_id": "280140cd-2c38-45e5-9927-3d8f7a46dd83",
+    "name": "OMG Ventares API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12463787"
+  },
+  "item": [
+    {
+      "name": "Cargar Ventares",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": [\n    {\n      \"id\": \"20221114\",\n      \"codisb\": \"{{codisb}}\",\n      \"fecha\": \"2022-11-14 12:00:00\",\n      \"numfact\": 100,\n      \"totfact\": 100000,\n      \"numdevol\": 10,\n      \"totdevol\": 10000,\n      \"totventa\": 110000\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/ventares/cargar",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "ventares",
+            "cargar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Ventares",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/ventares?codisb={{codisb}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "ventares"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

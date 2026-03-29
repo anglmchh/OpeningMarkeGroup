@@ -1,0 +1,235 @@
+{
+  "info": {
+    "_postman_id": "fee59f59-00d4-4913-a154-f622bb9a8008",
+    "name": "OMG Proveedores API",
+    "description": "Colección Postman para probar los endpoints de proveedores de OMG SEPED.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12463787"
+  },
+  "item": [
+    {
+      "name": "Proveedores - Cargar",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"proveedores\": [\n    {\n      \"codprov\": \"001\",\n      \"nombre\": \"LETI\",\n      \"rif\": \"J-12345678-9\",\n      \"direccion\": \"Av. Principal calle 87\",\n      \"telefono\": \"0212-1234567\",\n      \"contacto\": \"Juan Perez\",\n      \"estado\": \"ACTIVO\",\n      \"email\": \"juan@proveedor.com\",\n      \"diascred\": 30,\n      \"saldo\": 1000.00,\n      \"codisb\": \"{{codisb}}\",\n      \"vencido\": 500.00,\n      \"saldoDs\": 100.00,\n      \"vencidoDs\": 50.00\n    },\n    {\n      \"codprov\": \"002\",\n      \"nombre\": \"BAYER\",\n      \"rif\": \"J-87654321-0\",\n      \"direccion\": \"Zona Industrial Galpon 4\",\n      \"telefono\": \"0212-7654321\",\n      \"contacto\": \"Maria Gonzalez\",\n      \"estado\": \"ACTIVO\",\n      \"email\": \"maria@proveedor.com\",\n      \"diascred\": 45,\n      \"saldo\": 2500.50,\n      \"codisb\": \"{{codisb}}\",\n      \"vencido\": 200.00,\n      \"saldoDs\": 300.75,\n      \"vencidoDs\": 20.00\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/proveedores/cargar",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "proveedores",
+            "cargar"
+          ]
+        },
+        "description": "Carga masiva de proveedores. Inserta o actualiza por codprov + codisb."
+      },
+      "response": []
+    },
+    {
+      "name": "Proveedores - Consultar",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/proveedores?codisb={{codisb}}&limit=100",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "proveedores"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "description": "Consulta general de proveedores por codisb."
+      },
+      "response": []
+    },
+    {
+      "name": "Proveedores - Consultar por nombre",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/proveedores?codisb={{codisb}}&nombre=LETI&limit=50",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "proveedores"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "nombre",
+              "value": "LETI"
+            },
+            {
+              "key": "limit",
+              "value": "50"
+            }
+          ]
+        },
+        "description": "Busca proveedores por nombre usando like."
+      },
+      "response": []
+    },
+    {
+      "name": "Proveedores - Consultar por estado",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/proveedores?codisb={{codisb}}&estado=ACTIVO&limit=100",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "proveedores"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "estado",
+              "value": "ACTIVO"
+            },
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "description": "Consulta proveedores por estado."
+      },
+      "response": []
+    },
+    {
+      "name": "Proveedores - Detalle",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/proveedores/detalle?codisb={{codisb}}&codprov=001",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "proveedores",
+            "detalle"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "codprov",
+              "value": "001"
+            }
+          ]
+        },
+        "description": "Obtiene el detalle de un proveedor específico."
+      },
+      "response": []
+    },
+    {
+      "name": "Proveedores - Consultar vía POST",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"estado\": \"ACTIVO\",\n  \"limit\": 100\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/proveedores",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "proveedores"
+          ]
+        },
+        "description": "Consulta proveedores enviando filtros por POST."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://seped.openingmarketgroup.com"
+    },
+    {
+      "key": "api_key",
+      "value": ""
+    },
+    {
+      "key": "codisb",
+      "value": "12345678"
+    }
+  ]
+}

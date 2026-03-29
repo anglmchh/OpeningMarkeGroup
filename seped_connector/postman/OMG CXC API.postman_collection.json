@@ -1,0 +1,126 @@
+{
+  "info": {
+    "_postman_id": "cf63e4a4-8354-4e96-8891-36148a25699b",
+    "name": "OMG CXC API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12463787"
+  },
+  "item": [
+    {
+      "name": "Cargar CXC",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cxc\": [\n    {\n      \"codcli\": \"0000634\",\n      \"fechai\": \"2026-03-19 10:07:00\",\n      \"codesta\": \"01\",\n      \"codusua\": \"N/A\",\n      \"numerod\": \"A000083077\",\n      \"tipocxc\": \"VEN\",\n      \"monto\": 10240.2,\n      \"montoneto\": 10240.2,\n      \"mtotax\": 0.0,\n      \"saldo\": 10240.2,\n      \"nroctrol\": \"00-115750\",\n      \"notas1\": \"FACT NRO de Cliente 0000634...\",\n      \"descrip\": \"FARMACIA INKAFARMA CA\",\n      \"codisb\": \"{{codisb}}\",\n      \"codmoneda\": \"USD\",\n      \"factorcambiario\": 455.25,\n      \"fecha\": \"2026-03-19 10:07:00\",\n      \"saldoDs\": 22.49,\n      \"id\": \"A000083077\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/cxc/cargar",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cxc",
+            "cargar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get CXC",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/cxc?codisb={{codisb}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cxc"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get CXC Detalle",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/cxc/detalle?codcli=0000634&codisb={{codisb}}&id=A000083077",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cxc",
+            "detalle"
+          ],
+          "query": [
+            {
+              "key": "codcli",
+              "value": "0000634"
+            },
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "id",
+              "value": "A000083077"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "codisb",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}

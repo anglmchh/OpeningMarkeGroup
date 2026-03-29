@@ -1,0 +1,267 @@
+{
+  "info": {
+    "_postman_id": "ce786a7e-6351-43a0-85f6-13cf6d263df6",
+    "name": "OMG SEPED - Facturas API",
+    "description": "Colección Postman para endpoints de facturas y renglones en SEPED Opening Market Group.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12463787"
+  },
+  "item": [
+    {
+      "name": "Facturas - Cargar cabeceras",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"facturas\": [\n    {\n      \"factnum\": \"A000083075\",\n      \"fecha\": \"2026-03-19 09:53:00\",\n      \"codcli\": \"0001083\",\n      \"descrip\": \"107245 - compras.ca@farmavenezuela - PROCESADO [123 - usuario - estado]\",\n      \"monto\": 39.48,\n      \"iva\": 0.00,\n      \"gravable\": 0.00,\n      \"descuento\": 3.95,\n      \"total\": 35.53,\n      \"tipofac\": \"FACT\",\n      \"codesta\": \"01\",\n      \"codusua\": \"01\",\n      \"codvend\": \"000014\",\n      \"fechav\": \"2026-04-02 09:53:00\",\n      \"nroctrol\": \"00-115748\",\n      \"rif\": \"J-502231749\",\n      \"codisb\": \"501933669\",\n      \"observacion\": \"\",\n      \"codmoneda\": \"USD\",\n      \"factorcambiario\": 455.25,\n      \"origen\": \"ODOO\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/facturas/cargar",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas",
+            "cargar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Facturas - Cargar renglones",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"renglones\": [\n    {\n      \"factnum\": \"A000083075\",\n      \"codprod\": \"006533\",\n      \"renglon\": 1,\n      \"desprod\": \"TEKRON COMP. REC 200MG X 10\",\n      \"referencia\": \"7591585318565\",\n      \"cantidad\": 3.00,\n      \"precio\": 16.05,\n      \"subtotal\": 39.48,\n      \"impuesto\": 0.00,\n      \"descto\": 8.67,\n      \"nrolote\": \"209\",\n      \"fechal\": \"2028/10/01 00:00:00\",\n      \"fecfactura\": \"2026-03-19 09:53:00\",\n      \"codisb\": \"501933669\",\n      \"codprov\": \"000734\",\n      \"marca\": \"LETI\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/facturas/renglones/cargar",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas",
+            "renglones",
+            "cargar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Facturas - Consultar facturas del día",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/facturas?codisb={{codisb}}&limit=100",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "limit",
+              "value": "100"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Facturas - Consultar por rango de fechas",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"fecha_desde\": \"2026-03-01 00:00:00\",\n  \"fecha_hasta\": \"2026-03-23 23:59:59\",\n  \"limit\": 100\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/facturas",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Facturas - Consultar renglones del día",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/facturas/renglones?codisb={{codisb}}&limit=200",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas",
+            "renglones"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "limit",
+              "value": "200"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Facturas - Consultar renglones por factura",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/facturas/renglones?codisb={{codisb}}&factnum=A000083075&limit=200",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas",
+            "renglones"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "factnum",
+              "value": "A000083075"
+            },
+            {
+              "key": "limit",
+              "value": "200"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Facturas - Detalle completo de una factura",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/facturas/detalle?codisb={{codisb}}&factnum=A000083075",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "facturas",
+            "detalle"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "factnum",
+              "value": "A000083075"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://seped.openingmarketgroup.com"
+    },
+    {
+      "key": "api_key",
+      "value": ""
+    },
+    {
+      "key": "codisb",
+      "value": "501933669"
+    }
+  ]
+}

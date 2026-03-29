@@ -554,8 +554,7 @@ class SepedConfig(models.Model):
                 'proveedores': payload_items,
             }
             try:
-                # Usamos el endpoint inferido o el que el usuario asigne
-                result = self._make_request('POST', '/api/inventario/proveedores/sync', payload)
+                result = self._make_request('POST', '/api/proveedores/cargar', payload)
                 total_sent += len(payload_items)
             except UserError as e:
                 errors.append(str(e.args[0]))
@@ -609,11 +608,10 @@ class SepedConfig(models.Model):
             })
 
         payload = {
-            'codisb': self.codisb,
-            'cuentas': payload_items,
+            'ctabanco': payload_items,
         }
         try:
-            self._make_request('POST', '/api/bancos/cuentas/sync', payload)
+            self._make_request('POST', '/api/ctabanco/cargar', payload)
             self.last_bank_sync = fields.Datetime.now()
             return self._notify(_('Bancos sincronizados'), _('%d cuentas bancarias enviadas.') % len(payload_items), 'success')
         except UserError as e:
@@ -708,11 +706,12 @@ class SepedConfig(models.Model):
 
             try:
                 # Enviar Cabecera
-                self._make_request('POST', '/api/facturas/sync', {'codisb': self.codisb, 'facturas': [header_payload]})
+                self._make_request('POST', '/api/facturas/cargar', {'facturas': [header_payload]})
                 total_headers += 1
                 
                 # Enviar Renglones
-                self._make_request('POST', '/api/facturas/renglones/sync', {'codisb': self.codisb, 'renglones': line_payloads})
+                if line_payloads:
+                    self._make_request('POST', '/api/facturas/renglones/cargar', {'renglones': line_payloads})
                 total_lines += len(line_payloads)
                 
             except UserError as e:
@@ -777,11 +776,10 @@ class SepedConfig(models.Model):
             })
 
         payload = {
-            'codisb': self.codisb,
             'cxc': payload_items,
         }
         try:
-            self._make_request('POST', '/api/cuentas/cobrar/sync', payload)
+            self._make_request('POST', '/api/cxc/cargar', payload)
             self.last_cxc_sync = fields.Datetime.now()
             return self._notify(_('CxC sincronizadas'), _('%d registros de CxC enviados.') % len(payload_items), 'success')
         except UserError as e:
@@ -837,11 +835,10 @@ class SepedConfig(models.Model):
             })
 
         payload = {
-            'codisb': self.codisb,
             'cxp': payload_items,
         }
         try:
-            self._make_request('POST', '/api/cuentas/pagar/sync', payload)
+            self._make_request('POST', '/api/cxp/cargar', payload)
             self.last_cxp_sync = fields.Datetime.now()
             return self._notify(_('CxP sincronizadas'), _('%d registros de CxP enviados.') % len(payload_items), 'success')
         except UserError as e:
@@ -869,9 +866,9 @@ class SepedConfig(models.Model):
                 'codisb': self.codisb,
             })
 
-        payload = {'codisb': self.codisb, 'vendedores': payload_items}
+        payload = {'vendedores': payload_items}
         try:
-            self._make_request('POST', '/api/vendedores/sync', payload)
+            self._make_request('POST', '/api/vendedores/cargar', payload)
             self.last_vendedor_sync = fields.Datetime.now()
             return self._notify(_('Vendedores sincronizados'), _('%d vendedores enviados.') % len(payload_items), 'success')
         except UserError as e:
@@ -895,9 +892,9 @@ class SepedConfig(models.Model):
                 'codisb': self.codisb,
             })
 
-        payload = {'codisb': self.codisb, 'categorias': payload_items}
+        payload = {'categorias': payload_items}
         try:
-            self._make_request('POST', '/api/inventario/categorias/sync', payload)
+            self._make_request('POST', '/api/categorias/cargar', payload)
             self.last_category_sync = fields.Datetime.now()
             return self._notify(_('Categorías sincronizadas'), _('%d categorías enviadas.') % len(payload_items), 'success')
         except UserError as e:
@@ -922,22 +919,22 @@ class SepedConfig(models.Model):
         payload_items = []
         for q in Quants:
             lot = q.lot_id
+            expiry = lot.expiration_date.strftime('%Y/%m/%d 00:00:00') if hasattr(lot, 'expiration_date') and lot.expiration_date else '2099/12/31 00:00:00'
             payload_items.append({
                 'codpadre': lot.product_id.default_code or str(lot.product_id.id),
                 'codhijo': lot.product_id.default_code or str(lot.product_id.id),
                 'desprod': lot.product_id.name,
                 'lote': lot.name,
-                'feclote': lot.expiration_date.strftime('%Y/%m/%d') if lot.expiration_date else '2099/12/31',
+                'feclote': expiry,
                 'deposito': q.location_id.name or '',
                 'cantidad': int(q.quantity),
                 'codisb': self.codisb,
-                'nuevo': 1, # Asumimos inserción/actualización
                 'id': q.id,
             })
 
-        payload = {'codisb': self.codisb, 'lotes': payload_items}
+        payload = {'full_sync': False, 'lotes': payload_items}
         try:
-            self._make_request('POST', '/api/inventario/lotes/sync', payload)
+            self._make_request('POST', '/api/lotes/cargar', payload)
             self.last_lote_sync = fields.Datetime.now()
             return self._notify(_('Lotes sincronizados'), _('%d lotes enviados.') % len(payload_items), 'success')
         except UserError as e:
@@ -968,9 +965,9 @@ class SepedConfig(models.Model):
                 'codisb': self.codisb,
             })
 
-        payload = {'codisb': self.codisb, 'monedas': payload_items}
+        payload = {'monedas': payload_items}
         try:
-            self._make_request('POST', '/api/monedas/sync', payload)
+            self._make_request('POST', '/api/monedas/cargar', payload)
             self.last_moneda_sync = fields.Datetime.now()
             return self._notify(_('Monedas sincronizadas'), _('%d monedas enviadas.') % len(payload_items), 'success')
         except UserError as e:
@@ -1003,9 +1000,9 @@ class SepedConfig(models.Model):
                 'codisb': self.codisb,
             })
 
-        payload = {'codisb': self.codisb, 'productos_falla': payload_items}
+        payload = {'prodfalla': payload_items}
         try:
-            self._make_request('POST', '/api/inventario/productos/falla/sync', payload)
+            self._make_request('POST', '/api/prodfalla/cargar', payload)
             self.last_prodfalla_sync = fields.Datetime.now()
             return self._notify(_('Prod. Falla sincronizados'), _('%d productos en falla enviados.') % len(payload_items), 'success')
         except UserError as e:
@@ -1044,18 +1041,20 @@ class SepedConfig(models.Model):
         totventa = totfact - totdevol
 
         payload = {
-            'id': today.strftime('%Y%m%d'),
-            'codisb': self.codisb,
-            'fecha': fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'numfact': numfact,
-            'totfact': totfact,
-            'numdevol': numdevol,
-            'totdevol': totdevol,
-            'totventa': totventa,
+            'data': [{
+                'id': today.strftime('%Y%m%d'),
+                'codisb': self.codisb,
+                'fecha': fields.Datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'numfact': numfact,
+                'totfact': totfact,
+                'numdevol': numdevol,
+                'totdevol': totdevol,
+                'totventa': totventa,
+            }]
         }
 
         try:
-            self._make_request('POST', '/api/ventas/resumen/sync', payload)
+            self._make_request('POST', '/api/ventares/cargar', payload)
             self.last_ventares_sync = fields.Datetime.now()
             return self._notify(_('Resumen ventas sincronizado'), _('Resumen del día %s enviado.') % today, 'success')
         except UserError as e:

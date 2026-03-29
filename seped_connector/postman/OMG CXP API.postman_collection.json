@@ -1,0 +1,109 @@
+{
+  "info": {
+    "_postman_id": "cb946244-8466-472b-ae1b-493f8fdabdca",
+    "name": "OMG CXP API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12463787"
+  },
+  "item": [
+    {
+      "name": "Cargar CXP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cxp\": [\n    {\n      \"codprov\": \"000213\",\n      \"fechai\": \"2026-03-18 14:43:00\",\n      \"codesta\": \"01\",\n      \"codusua\": \"N/A\",\n      \"numerod\": \"0000015321\",\n      \"tipocxp\": \"COM\",\n      \"monto\": 16073.83,\n      \"montoneto\": 13856.75,\n      \"mtotax\": 2217.08,\n      \"saldo\": 14411.02,\n      \"nroctrol\": \"Z7C7009694\",\n      \"notas1\": \"f 16319 FERRE HOGAR...\",\n      \"descrip\": \"FERRE HOGAR OCTAGONO CA\",\n      \"codisb\": \"{{codisb}}\",\n      \"codmoneda\": \"USD\",\n      \"factorcambiario\": 451.51,\n      \"fecha\": \"2026-03-18 14:43:00\",\n      \"saldoDs\": 31.92,\n      \"id\": \"0000015321\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/cxp/cargar",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cxp",
+            "cargar"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get CXP",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/cxp?codisb={{codisb}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cxp"
+          ],
+          "query": [
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get CXP Detalle",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-api-key",
+            "value": "{{api_key}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/cxp/detalle?codprov=000213&codisb={{codisb}}&id=0000015321",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "cxp",
+            "detalle"
+          ],
+          "query": [
+            {
+              "key": "codprov",
+              "value": "000213"
+            },
+            {
+              "key": "codisb",
+              "value": "{{codisb}}"
+            },
+            {
+              "key": "id",
+              "value": "0000015321"
+            }
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

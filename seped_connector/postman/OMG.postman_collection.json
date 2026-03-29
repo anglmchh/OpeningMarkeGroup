@@ -1,0 +1,1882 @@
+{
+  "info": {
+    "_postman_id": "6ca48489-d4d2-49fe-aada-9e612f7501b5",
+    "name": "OMG",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12463787"
+  },
+  "item": [
+    {
+      "name": "OMG CATEGORIAS API",
+      "item": [
+        {
+          "name": "Cargar Categorias",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categorias\": [\n    {\n      \"codcat\": \"000001\",\n      \"nomcat\": \"MED. NO CONTROLADOS\",\n      \"codisb\": \"{{codisb}}\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/categorias/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categorias",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Categorias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categorias?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categorias"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Categoria Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/categorias/detalle?codcat=000001&codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "categorias",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codcat",
+                  "value": "000001"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG CTABANCO API",
+      "item": [
+        {
+          "name": "Cargar Ctabanco",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ctabanco\": [\n    {\n      \"co_cta\": \"000001\",\n      \"co_banco\": \"0108\",\n      \"num_cuenta\": \"01080305570100129408\",\n      \"codisb\": \"{{codisb}}\",\n      \"activo\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ctabanco/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ctabanco",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ctabanco",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ctabanco?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ctabanco"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ctabanco Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ctabanco/detalle?co_cta=000001&codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ctabanco",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "co_cta",
+                  "value": "000001"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG CXC API",
+      "item": [
+        {
+          "name": "Cargar CXC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cxc\": [\n    {\n      \"codcli\": \"0000634\",\n      \"fechai\": \"2026-03-19 10:07:00\",\n      \"codesta\": \"01\",\n      \"codusua\": \"N/A\",\n      \"numerod\": \"A000083077\",\n      \"tipocxc\": \"VEN\",\n      \"monto\": 10240.2,\n      \"montoneto\": 10240.2,\n      \"mtotax\": 0.0,\n      \"saldo\": 10240.2,\n      \"nroctrol\": \"00-115750\",\n      \"notas1\": \"FACT NRO de Cliente 0000634...\",\n      \"descrip\": \"FARMACIA INKAFARMA CA\",\n      \"codisb\": \"{{codisb}}\",\n      \"codmoneda\": \"USD\",\n      \"factorcambiario\": 455.25,\n      \"fecha\": \"2026-03-19 10:07:00\",\n      \"saldoDs\": 22.49,\n      \"id\": \"A000083077\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cxc/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cxc",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get CXC",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cxc?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cxc"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get CXC Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cxc/detalle?codcli=0000634&codisb={{codisb}}&id=A000083077",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cxc",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codcli",
+                  "value": "0000634"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "id",
+                  "value": "A000083077"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG CXP API",
+      "item": [
+        {
+          "name": "Cargar CXP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cxp\": [\n    {\n      \"codprov\": \"000213\",\n      \"fechai\": \"2026-03-18 14:43:00\",\n      \"codesta\": \"01\",\n      \"codusua\": \"N/A\",\n      \"numerod\": \"0000015321\",\n      \"tipocxp\": \"COM\",\n      \"monto\": 16073.83,\n      \"montoneto\": 13856.75,\n      \"mtotax\": 2217.08,\n      \"saldo\": 14411.02,\n      \"nroctrol\": \"Z7C7009694\",\n      \"notas1\": \"f 16319 FERRE HOGAR...\",\n      \"descrip\": \"FERRE HOGAR OCTAGONO CA\",\n      \"codisb\": \"{{codisb}}\",\n      \"codmoneda\": \"USD\",\n      \"factorcambiario\": 451.51,\n      \"fecha\": \"2026-03-18 14:43:00\",\n      \"saldoDs\": 31.92,\n      \"id\": \"0000015321\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cxp/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cxp",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get CXP",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cxp?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cxp"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get CXP Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cxp/detalle?codprov=000213&codisb={{codisb}}&id=0000015321",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cxp",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codprov",
+                  "value": "000213"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "id",
+                  "value": "0000015321"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG PROVEEDORES API",
+      "item": [
+        {
+          "name": "Proveedores - Cargar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proveedores\": [\n    {\n      \"codprov\": \"001\",\n      \"nombre\": \"LETI\",\n      \"rif\": \"J-12345678-9\",\n      \"direccion\": \"Av. Principal calle 87\",\n      \"telefono\": \"0212-1234567\",\n      \"contacto\": \"Juan Perez\",\n      \"estado\": \"ACTIVO\",\n      \"email\": \"juan@proveedor.com\",\n      \"diascred\": 30,\n      \"saldo\": 1000.00,\n      \"codisb\": \"{{codisb}}\",\n      \"vencido\": 500.00,\n      \"saldoDs\": 100.00,\n      \"vencidoDs\": 50.00\n    },\n    {\n      \"codprov\": \"002\",\n      \"nombre\": \"BAYER\",\n      \"rif\": \"J-87654321-0\",\n      \"direccion\": \"Zona Industrial Galpon 4\",\n      \"telefono\": \"0212-7654321\",\n      \"contacto\": \"Maria Gonzalez\",\n      \"estado\": \"ACTIVO\",\n      \"email\": \"maria@proveedor.com\",\n      \"diascred\": 45,\n      \"saldo\": 2500.50,\n      \"codisb\": \"{{codisb}}\",\n      \"vencido\": 200.00,\n      \"saldoDs\": 300.75,\n      \"vencidoDs\": 20.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/proveedores/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "proveedores",
+                "cargar"
+              ]
+            },
+            "description": "Carga masiva de proveedores. Inserta o actualiza por codprov + codisb."
+          },
+          "response": []
+        },
+        {
+          "name": "Proveedores - Consultar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/proveedores?codisb={{codisb}}&limit=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "proveedores"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": "Consulta general de proveedores por codisb."
+          },
+          "response": []
+        },
+        {
+          "name": "Proveedores - Consultar por nombre",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/proveedores?codisb={{codisb}}&nombre=LETI&limit=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "proveedores"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "nombre",
+                  "value": "LETI"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Busca proveedores por nombre usando like."
+          },
+          "response": []
+        },
+        {
+          "name": "Proveedores - Consultar por estado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/proveedores?codisb={{codisb}}&estado=ACTIVO&limit=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "proveedores"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "estado",
+                  "value": "ACTIVO"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": "Consulta proveedores por estado."
+          },
+          "response": []
+        },
+        {
+          "name": "Proveedores - Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/proveedores/detalle?codisb={{codisb}}&codprov=001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "proveedores",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "codprov",
+                  "value": "001"
+                }
+              ]
+            },
+            "description": "Obtiene el detalle de un proveedor específico."
+          },
+          "response": []
+        },
+        {
+          "name": "Proveedores - Consultar vía POST",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"estado\": \"ACTIVO\",\n  \"limit\": 100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/proveedores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "proveedores"
+              ]
+            },
+            "description": "Consulta proveedores enviando filtros por POST."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG FACTURAS API",
+      "item": [
+        {
+          "name": "Facturas - Cargar cabeceras",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facturas\": [\n    {\n      \"factnum\": \"A000083075\",\n      \"fecha\": \"2026-03-19 09:53:00\",\n      \"codcli\": \"0001083\",\n      \"descrip\": \"107245 - compras.ca@farmavenezuela - PROCESADO [123 - usuario - estado]\",\n      \"monto\": 39.48,\n      \"iva\": 0.00,\n      \"gravable\": 0.00,\n      \"descuento\": 3.95,\n      \"total\": 35.53,\n      \"tipofac\": \"FACT\",\n      \"codesta\": \"01\",\n      \"codusua\": \"01\",\n      \"codvend\": \"000014\",\n      \"fechav\": \"2026-04-02 09:53:00\",\n      \"nroctrol\": \"00-115748\",\n      \"rif\": \"J-502231749\",\n      \"codisb\": \"501933669\",\n      \"observacion\": \"\",\n      \"codmoneda\": \"USD\",\n      \"factorcambiario\": 455.25,\n      \"origen\": \"ODOO\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/facturas/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Facturas - Cargar renglones",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"renglones\": [\n    {\n      \"factnum\": \"A000083075\",\n      \"codprod\": \"006533\",\n      \"renglon\": 1,\n      \"desprod\": \"TEKRON COMP. REC 200MG X 10\",\n      \"referencia\": \"7591585318565\",\n      \"cantidad\": 3.00,\n      \"precio\": 16.05,\n      \"subtotal\": 39.48,\n      \"impuesto\": 0.00,\n      \"descto\": 8.67,\n      \"nrolote\": \"209\",\n      \"fechal\": \"2028/10/01 00:00:00\",\n      \"fecfactura\": \"2026-03-19 09:53:00\",\n      \"codisb\": \"501933669\",\n      \"codprov\": \"000734\",\n      \"marca\": \"LETI\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/facturas/renglones/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas",
+                "renglones",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Facturas - Consultar facturas del día",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/facturas?codisb={{codisb}}&limit=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "100"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Facturas - Consultar por rango de fechas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"fecha_desde\": \"2026-03-01 00:00:00\",\n  \"fecha_hasta\": \"2026-03-23 23:59:59\",\n  \"limit\": 100\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/facturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Facturas - Consultar renglones del día",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/facturas/renglones?codisb={{codisb}}&limit=200",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas",
+                "renglones"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "200"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Facturas - Consultar renglones por factura",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/facturas/renglones?codisb={{codisb}}&factnum=A000083075&limit=200",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas",
+                "renglones"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "factnum",
+                  "value": "A000083075"
+                },
+                {
+                  "key": "limit",
+                  "value": "200"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Facturas - Detalle completo de una factura",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/facturas/detalle?codisb={{codisb}}&factnum=A000083075",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "facturas",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "factnum",
+                  "value": "A000083075"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG VENDEDORES API",
+      "item": [
+        {
+          "name": "Cargar Vendedores",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedores\": [\n    {\n      \"codigo\": \"000022\",\n      \"nombre\": \"OSWALDO ORONO\",\n      \"tipo\": \"\",\n      \"supervisor\": \"1\",\n      \"codisb\": \"{{codisb}}\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/vendedores/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "vendedores",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vendedores",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/vendedores?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "vendedores"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vendedor Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/vendedores/detalle?codigo=000022&codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "vendedores",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "000022"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG VENTARES API",
+      "item": [
+        {
+          "name": "Cargar Ventares",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": [\n    {\n      \"id\": \"20221114\",\n      \"codisb\": \"{{codisb}}\",\n      \"fecha\": \"2022-11-14 12:00:00\",\n      \"numfact\": 100,\n      \"totfact\": 100000,\n      \"numdevol\": 10,\n      \"totdevol\": 10000,\n      \"totventa\": 110000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ventares/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ventares",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ventares",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ventares?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ventares"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG PRODUCTOS API",
+      "item": [
+        {
+          "name": "Productos - Full Sync",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200/422', function () {",
+                  "  pm.expect([200, 422, 401]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('ok=true', function () {",
+                  "    pm.expect(json.ok).to.eql(true);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/plain",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"productos\": [\n    {\n      \"codprod\": \"abc123\",\n      \"barra\": \"7591234567890\",\n      \"desprod\": \"producto prueba\",\n      \"tipo\": \"p\",\n      \"iva\": 16,\n      \"regulado\": \"0\",\n      \"original\": \"0\",\n      \"cantidad\": 15,\n      \"precio1\": 100.50\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/productos/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "productos",
+                "sync"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Productos - PATCH Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200/422', function () {",
+                  "  pm.expect([200, 422, 401]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('ok=true', function () {",
+                  "    pm.expect(json.ok).to.eql(true);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/plain",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"items\": [\n    { \"codprod\": \"A1\", \"cantidad\": 0 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/productos/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "productos",
+                "stock"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG CLIENTES API",
+      "item": [
+        {
+          "name": "Clientes - Full Sync",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200/422', function () {",
+                  "  pm.expect([200, 422, 401]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('ok=true', function () {",
+                  "    pm.expect(json.ok).to.eql(true);",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{apiKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/plain",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codisb\": \"{{codisb}}\",\n  \"clientes\": [\n    {\n      \"codcli\": \"C1\",\n      \"nombre\": \"Cliente 1\",\n      \"rif\": \"J123\",\n      \"direccion\": \"Dir 1\",\n      \"ppago\": 99,\n      \"usaprecio\": \"1\",\n      \"email\": \"c1@test.com\"\n    },\n    {\n      \"codcli\": \"C2\",\n      \"nombre\": \"Cliente 2\",\n      \"rif\": \"J456\",\n      \"direccion\": \"Dir 2\",\n      \"ppago\": 10,\n      \"usaprecio\": \"1\",\n      \"email\": \"c2@test.com\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventario/clientes/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "inventario",
+                "clientes",
+                "sync"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG PEDIDOS API",
+      "item": [
+        {
+          "name": "Pedidos - Extraer pendientes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/pedidos/pendientes?codisb={{codisb}}&limit=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "pendientes"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pedidos - Actualizar estado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"codisb\": \"{{codisb}}\",\n    \"id\": \"4\",\n    \"estado\": \"FACTURADO\",\n    \"documento\": \"Factura INV/2026/00001 validada en Odoo.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/pedidos/estado",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "estado"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG LOTES API",
+      "item": [
+        {
+          "name": "Cargar Lotes - Partial Sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_sync\": false,\n  \"lotes\": [\n    {\n      \"codpadre\": \"006748\",\n      \"codhijo\": \"006748\",\n      \"desprod\": \"DIOSMINA TAB/REC 600MG X 30 DAC 55\",\n      \"lote\": \"5J02\",\n      \"feclote\": \"2028/07/01 00:00:00\",\n      \"deposito\": \"\",\n      \"cantidad\": 21598,\n      \"codisb\": \"{{codisb}}\",\n      \"id\": 5694\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/lotes/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lotes",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cargar Lotes - Full Sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_sync\": true,\n  \"lotes\": [\n    {\n      \"codpadre\": \"006748\",\n      \"codhijo\": \"006748\",\n      \"desprod\": \"DIOSMINA TAB/REC 600MG X 30 DAC 55\",\n      \"lote\": \"5J02\",\n      \"feclote\": \"2028/07/01\",\n      \"deposito\": \"\",\n      \"cantidad\": 21598,\n      \"codisb\": \"{{codisb}}\",\n      \"id\": 5694\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/lotes/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lotes",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lotes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lotes?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lotes"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lotes por Producto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lotes?codisb={{codisb}}&codpadre=006748",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lotes"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "codpadre",
+                  "value": "006748"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lotes por Estado Nuevo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lotes?codisb={{codisb}}&nuevo=3",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lotes"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "nuevo",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lote Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/lotes/detalle?id=5694",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "lotes",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "5694"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG MONEDAS API",
+      "item": [
+        {
+          "name": "Cargar Monedas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monedas\": [\n    {\n      \"codigo\": \"BS\",\n      \"descrip\": \"Bolivares\",\n      \"factor\": 1.0,\n      \"pref\": \"SI\",\n      \"simbolo\": \"BS\",\n      \"codisb\": \"{{codisb}}\"\n    },\n    {\n      \"codigo\": \"USD\",\n      \"descrip\": \"Dolares\",\n      \"factor\": 455.25,\n      \"pref\": \"NO\",\n      \"simbolo\": \"$\",\n      \"codisb\": \"{{codisb}}\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/monedas/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "monedas",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Monedas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/monedas?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "monedas"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Moneda por Codigo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/monedas?codisb={{codisb}}&codigo=USD",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "monedas"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "codigo",
+                  "value": "USD"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Moneda Preferida",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/monedas?codisb={{codisb}}&pref=SI",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "monedas"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "pref",
+                  "value": "SI"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Moneda Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/monedas/detalle?codigo=USD&codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "monedas",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codigo",
+                  "value": "USD"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OMG PRODFALLA API",
+      "item": [
+        {
+          "name": "Cargar ProdFalla",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prodfalla\": [\n    {\n      \"barra\": \"8904306500979\",\n      \"codprod\": \"000018\",\n      \"desprod\": \"IRBESARTAN (IRTAN) TAB 150 MG X 10\",\n      \"marcamodelo\": \"N/A\",\n      \"pactivo\": \"IRBESARTAN\",\n      \"codisb\": \"{{codisb}}\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/prodfalla/cargar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "prodfalla",
+                "cargar"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get ProdFalla",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/prodfalla?codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "prodfalla"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get ProdFalla por Codigo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/prodfalla?codisb={{codisb}}&codprod=000018",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "prodfalla"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "codprod",
+                  "value": "000018"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get ProdFalla por Barra",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/prodfalla?codisb={{codisb}}&barra=8904306500979",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "prodfalla"
+              ],
+              "query": [
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                },
+                {
+                  "key": "barra",
+                  "value": "8904306500979"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get ProdFalla Detalle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/prodfalla/detalle?codprod=000018&codisb={{codisb}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "prodfalla",
+                "detalle"
+              ],
+              "query": [
+                {
+                  "key": "codprod",
+                  "value": "000018"
+                },
+                {
+                  "key": "codisb",
+                  "value": "{{codisb}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "default"
+    },
+    {
+      "key": "codisb",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}
