@@ -309,6 +309,8 @@ class SepedConfig(models.Model):
                     'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
                     'precio1': prod.lst_price,
+                    # Categoría — mismo codcat que se envía en action_sync_categories
+                    'codcat': str(prod.categ_id.id) if prod.categ_id else '',
                     # Campos finales validados con soporte técnico de SEPED
                     'iva': int(iva_val),
                     'tipo': 'p',
