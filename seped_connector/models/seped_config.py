@@ -189,11 +189,16 @@ class SepedConfig(models.Model):
         if response.status_code == 422:
             try:
                 data = response.json()
+                # Mostrar msg + errors detallados (Laravel los pone en 'errors' o 'message')
+                msg = data.get('msg') or data.get('message') or ''
+                errors_detail = data.get('errors') or data.get('error') or ''
+                if errors_detail:
+                    full_msg = '%s | Detalle: %s' % (msg, json.dumps(errors_detail, ensure_ascii=False))
+                else:
+                    full_msg = msg or response.text[:500]
             except Exception:
-                data = {'msg': response.text}
-            raise UserError(_(
-                'Datos inválidos (422): %s'
-            ) % data.get('msg', response.text))
+                full_msg = response.text[:500]
+            raise UserError(_('Datos inválidos (422): %s') % full_msg)
         if not response.ok:
             raise UserError(_(
                 'Error inesperado de la API SEPED [%s]: %s'
