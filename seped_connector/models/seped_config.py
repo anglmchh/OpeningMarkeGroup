@@ -552,7 +552,7 @@ class SepedConfig(models.Model):
                 'vencidoDs': float(vencido_ds or 0.0),
             }
 
-            payload = {'codisb': self.codisb, 'proveedores': [item]}
+            payload = {'proveedores': [item]}
             try:
                 self._make_request('POST', '/api/proveedores/cargar', payload)
                 total_sent += 1
