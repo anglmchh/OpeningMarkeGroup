@@ -539,7 +539,7 @@ class SepedConfig(models.Model):
                     'direccion': direccion,
                     'telefono': partner.phone or partner.mobile or '',
                     'contacto': partner.name or '', # Podría ser un contacto hijo
-                    'estado': 'Activo' if partner.active else 'Inactivo',
+                    'estado': 'ACTIVO' if partner.active else 'INACTIVO',
                     'email': partner.email or '',
                     'diascred': diascred,
                     'saldo': saldo,
@@ -590,22 +590,35 @@ class SepedConfig(models.Model):
 
         payload_items = []
         for journal in banks:
-            # Intentar obtener el número de cuenta de la relación bank_account_id
+            # Número de cuenta: OBLIGATORIO - saltamos si no tiene cuenta bancaria vinculada
             num_cuenta = journal.bank_account_id.acc_number if journal.bank_account_id else ''
-            # Sudeban code (si está disponible en el banco)
+            if not num_cuenta:
+                _logger.warning('SEPED bancos: diario "%s" sin cuenta bancaria vinculada, omitido.', journal.name)
+                continue
+
+            # Código banco (Sudeban 4 dígitos). Prioridad: l10n_ve_code > bic[:4] > '0000'
             co_banco = ''
-            if journal.bank_id and hasattr(journal.bank_id, 'l10n_ve_code'):
-                co_banco = getattr(journal.bank_id, 'l10n_ve_code')
-            elif journal.bank_id:
-                 co_banco = journal.bank_id.bic or ''
+            if journal.bank_id:
+                co_banco = getattr(journal.bank_id, 'l10n_ve_code', '') or ''
+                if not co_banco:
+                    bic = journal.bank_id.bic or ''
+                    co_banco = bic[:4] if bic else '0000'
+            else:
+                co_banco = '0000'
+
+            # co_cta: código interno de la cuenta, zero-padded a 6 dígitos
+            co_cta = str(journal.id).zfill(6)
 
             payload_items.append({
-                'co_cta': str(journal.id),
-                'co_banco': co_banco[:10],
-                'num_cuenta': num_cuenta or journal.name,
+                'co_cta': co_cta,
+                'co_banco': co_banco[:4],
+                'num_cuenta': num_cuenta,
                 'codisb': self.codisb,
                 'activo': 1 if journal.active else 0,
             })
+
+        if not payload_items:
+            return self._notify(_('Sin bancos'), _('No hay cuentas bancarias con número de cuenta configurado.'), 'warning')
 
         payload = {
             'ctabanco': payload_items,
@@ -915,7 +928,10 @@ class SepedConfig(models.Model):
             ('quantity', '>', 0),
             ('location_id.usage', '=', 'internal'),
         ])
-        
+
+        if not Quants:
+            return self._notify(_('Sin lotes'), _('No se encontraron lotes con existencias en ubicaciones internas.'), 'info')
+
         payload_items = []
         for q in Quants:
             lot = q.lot_id
@@ -988,15 +1004,19 @@ class SepedConfig(models.Model):
             ('sale_ok', '=', True),
             ('qty_available', '<=', 0),
         ])
-        
+        if not products:
+            return self._notify(_('Sin Prod. Falla'), _('No hay productos con stock cero o negativo.'), 'info')
+
         payload_items = []
         for prod in products:
+            # pactivo: principio activo del producto — usamos la categoría como aproximación
+            pactivo = prod.categ_id.name if prod.categ_id else 'N/A'
             payload_items.append({
                 'barra': prod.barcode or '',
                 'codprod': prod.default_code or str(prod.id),
                 'desprod': prod.name,
                 'marcamodelo': 'N/A',
-                'pactivo': '', # Podría mapearse a un campo específico
+                'pactivo': pactivo,
                 'codisb': self.codisb,
             })
 
