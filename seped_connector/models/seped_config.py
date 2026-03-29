@@ -499,7 +499,7 @@ class SepedConfig(models.Model):
         self.ensure_one()
         Partner = self.env['res.partner']
         vendors = Partner.search([
-            '|', ('supplier_rank', '>', 0), ('is_company', '=', True),
+            ('supplier_rank', '>', 0),
             ('active', '=', True),
         ])
 
