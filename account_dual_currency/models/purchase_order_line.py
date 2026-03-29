@@ -6,10 +6,10 @@ class PurchaseOrderLine(models.Model):
     def _prepare_account_move_line(self, move=False):
         self.ensure_one()
 
-        account = (
-            self.product_id.property_account_expense_id or
-            self.product_id.categ_id.property_account_expense_categ_id
-        )
+        # account = (
+        #     self.product_id.property_account_expense_id or
+        #     self.product_id.categ_id.property_account_expense_categ_id
+        # )
 
         company = self.order_id.company_id or self.env.company
         currency = self.currency_id or company.currency_id
@@ -39,6 +39,6 @@ class PurchaseOrderLine(models.Model):
             'tax_ids': [(6, 0, self.taxes_id.ids)],
             'purchase_line_id': self.id,
             'display_type': self.display_type or None,
-            'account_id': account.id if account else False,
+            # 'account_id': account.id if account else False,
             'balance': amount_converted,
         }

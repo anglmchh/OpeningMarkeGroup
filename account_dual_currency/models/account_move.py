@@ -19,21 +19,19 @@ import json
 import logging
 _logger = logging.getLogger(__name__)
 
-
 class AccountMove(models.Model):
     _inherit = 'account.move'
-
+        
     currency_id_dif = fields.Many2one("res.currency",
-                                      string="Moneda Dual Ref.",
-                                      default=lambda self: self.env['res.currency'].search([('name', '=', 'USD')],
+                                     string="Moneda Dual Ref.",
+                                     default=lambda self: self.env['res.currency'].search([('name', '=', 'USD')],
                                                                                            limit=1), )
 
-    acuerdo_moneda = fields.Boolean(
-        string="Acuerdo de Factura Bs.", default=False)
+    acuerdo_moneda = fields.Boolean(string="Acuerdo de Factura Bs.", default=False)
 
     tax_today = fields.Float(string="Tasa", store=True,
-                             default=lambda self: self.env.company.currency_id_dif.inverse_rate,
-                             tracking=True, digits='Dual_Currency_rate')
+                              default=lambda self: self.env.company.currency_id_dif.inverse_rate,
+                              tracking=True, digits='Dual_Currency_rate')
 
     tax_today_edited = fields.Boolean(string="Tasa editada", default=False)
 
@@ -51,10 +49,10 @@ class AccountMove(models.Model):
     amount_residual_usd = fields.Monetary(currency_field='currency_id_dif', compute='_compute_amount', string='Adeudado Ref.',
                                           readonly=True, digits='Dual_Currency', store=True, copy=False)
     invoice_payments_widget_usd = fields.Binary(groups="account.group_account_invoice,account.group_account_readonly",
-                                                compute='_compute_payments_widget_reconciled_info_USD')
+                                              compute='_compute_payments_widget_reconciled_info_USD')
 
     amount_untaxed_bs = fields.Monetary(currency_field='company_currency_id', string="Base imponible Bs.", store=True, copy=False,
-                                        compute="_amount_all_usd")
+                                         compute="_amount_all_usd")
     amount_tax_bs = fields.Monetary(currency_field='company_currency_id', string="Impuestos Bs.", compute="_amount_all_usd", store=True, copy=False,
                                     readonly=True)
     amount_total_bs = fields.Monetary(currency_field='company_currency_id', string='Total Bs.', store=True,
@@ -67,19 +65,14 @@ class AccountMove(models.Model):
         currency_field='currency_id_dif', copy=False
     )
 
-    invoice_payments_widget_bs = fields.Text(
-        groups="account.group_account_invoice", copy=False)
+    invoice_payments_widget_bs = fields.Text(groups="account.group_account_invoice", copy=False)
 
-    same_currency = fields.Boolean(
-        string="Mismo tipo de moneda", compute='_same_currency')
+    same_currency = fields.Boolean(string="Mismo tipo de moneda", compute='_same_currency')
 
-    verificar_pagos = fields.Boolean(
-        string="Verificar pagos", compute='_verificar_pagos')
+    verificar_pagos = fields.Boolean(string="Verificar pagos", compute='_verificar_pagos')
 
-    asset_remaining_value_ref = fields.Monetary(
-        currency_field='currency_id_dif', string='Valor depreciable Ref.', copy=False, compute='_compute_depreciation_cumulative_value_ref')
-    asset_depreciated_value_ref = fields.Monetary(
-        currency_field='currency_id_dif', string='Depreciación Acu. Ref.', copy=False, compute='_compute_depreciation_cumulative_value_ref')
+    asset_remaining_value_ref = fields.Monetary(currency_field='currency_id_dif', string='Valor depreciable Ref.', copy=False, compute='_compute_depreciation_cumulative_value_ref')
+    asset_depreciated_value_ref = fields.Monetary(currency_field='currency_id_dif', string='Depreciación Acu. Ref.', copy=False, compute='_compute_depreciation_cumulative_value_ref')
 
     # --- ✨ CAMPOS IGTF CORREGIDOS Y MEJORADOS ---
     aplicar_igtf = fields.Boolean(string="Aplica IGTF")
@@ -89,7 +82,7 @@ class AccountMove(models.Model):
         check_company=True
     )
     mount_igtf = fields.Monetary(
-        currency_field='company_currency_id',  # <-- ESTE ES EL CAMPO CORRECTO
+        currency_field='company_currency_id', # <-- ESTE ES EL CAMPO CORRECTO
         string='Monto IGTF',
         readonly=True
     )
@@ -105,8 +98,50 @@ class AccountMove(models.Model):
         compute="_compute_depreciation_value_ref", inverse="_inverse_depreciation_value_ref", store=True, copy=False
     )
 
-    def _post(self, soft=True):
+    @api.depends(
+        'line_ids.matched_debit_ids.debit_move_id.move_id.payment_id.is_matched',
+        'line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual',
+        'line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual_currency',
+        'line_ids.matched_credit_ids.credit_move_id.move_id.payment_id.is_matched',
+        'line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual',
+        'line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual_currency',
+        'line_ids.balance',
+        'line_ids.currency_id',
+        'line_ids.amount_currency',
+        'line_ids.amount_residual',
+        'line_ids.amount_residual_currency',
+        'line_ids.payment_id.state',
+        'line_ids.full_reconcile_id',
+        'tax_today',
+        'state',
+    )
+    def _compute_amount(self):
+        """Extiende el cómputo nativo sin tocar `amount_tax`/totales en Bs.
 
+        Solo recalcula los campos de referencia (USD) basados en `balance_usd`.
+        """
+        super(AccountMove, self)._compute_amount()
+        for move in self:
+            total_residual = 0.0
+            total = 0.0
+            for line in move.line_ids:
+                if move.is_invoice(True):
+                    if line.display_type == 'tax' or (
+                        line.display_type == 'rounding' and line.tax_repartition_line_id
+                    ):
+                        total += line.balance_usd
+                    elif line.display_type in ('product', 'rounding'):
+                        total += line.balance_usd
+                    elif line.display_type == 'payment_term':
+                        total_residual += line.amount_residual_usd
+                else:
+                    if line.debit:
+                        total += line.balance
+            move.amount_residual_usd = total_residual
+            move.amount_total_signed_usd = abs(total) if move.move_type == 'entry' else -total
+
+    def _post(self, soft=True):
+        
         # Inyectamos el contexto de bloqueo antes de nada.
         # Esto soluciona el problema de IVA que cambia al publicar.
         moves_to_post = self.with_context(skip_tax_today_onchange=True)
@@ -115,61 +150,47 @@ class AccountMove(models.Model):
             # =================================================================
             # LOGS PRE-POST: Verificamos los valores ANTES de la publicación
             # =================================================================
-            _logger.info(
-                "===================================================================")
-            _logger.info(
-                f"[DUAL POST] INICIO Post de Factura ID: {move.id} - Nombre: {move.name}")
-            _logger.info(
-                f"[DUAL POST] Tasa actual (tax_today): {move.tax_today}")
-
+            _logger.info("===================================================================")
+            _logger.info(f"[DUAL POST] INICIO Post de Factura ID: {move.id} - Nombre: {move.name}")
+            _logger.info(f"[DUAL POST] Tasa actual (tax_today): {move.tax_today}")
+            
             move._compute_tax_totals()
             tax_totals_info = move.tax_totals or {}
-
+            
             untaxed_amount_pre = tax_totals_info.get('amount_untaxed', 0.0)
             tax_amount_pre = tax_totals_info.get('amount_tax', 0.0)
             total_amount_pre = tax_totals_info.get('amount_total', 0.0)
+            
+            _logger.info(f"[DUAL POST] PRE-POST - Base Imponible: {untaxed_amount_pre}")
+            _logger.info(f"[DUAL POST] PRE-POST - Monto Impuesto (IVA): {tax_amount_pre}")
+            _logger.info(f"[DUAL POST] PRE-POST - Monto Total: {total_amount_pre}")
+            _logger.info("===================================================================")
 
-            _logger.info(
-                f"[DUAL POST] PRE-POST - Base Imponible: {untaxed_amount_pre}")
-            _logger.info(
-                f"[DUAL POST] PRE-POST - Monto Impuesto (IVA): {tax_amount_pre}")
-            _logger.info(
-                f"[DUAL POST] PRE-POST - Monto Total: {total_amount_pre}")
-            _logger.info(
-                "===================================================================")
-
+        
         res = super(AccountMove, moves_to_post)._post(soft=soft)
-
+        
         for move in res:
             # =================================================================
             # LOGS POST-POST: Verificamos los valores DESPUÉS de la publicación
             # =================================================================
             move._compute_tax_totals()
             tax_totals_info_post = move.tax_totals or {}
-
-            untaxed_amount_post = tax_totals_info_post.get(
-                'amount_untaxed', 0.0)
+            
+            untaxed_amount_post = tax_totals_info_post.get('amount_untaxed', 0.0)
             tax_amount_post = tax_totals_info_post.get('amount_tax', 0.0)
             total_amount_post = tax_totals_info_post.get('amount_total', 0.0)
-
-            _logger.info(
-                "===================================================================")
-            _logger.info(
-                f"[DUAL POST] FINAL Post de Factura ID: {move.id} - Nombre: {move.name}")
-            _logger.info(
-                f"[DUAL POST] Tasa final (tax_today): {move.tax_today}")
-
-            _logger.info(
-                f"[DUAL POST] POST-POST - Base Imponible: {untaxed_amount_post} (Diferencia: {untaxed_amount_post - untaxed_amount_pre:.6f})")
-            _logger.info(
-                f"[DUAL POST] POST-POST - Monto Impuesto (IVA): {tax_amount_post} (Diferencia: {tax_amount_post - tax_amount_pre:.6f})")
-            _logger.info(
-                f"[DUAL POST] POST-POST - Monto Total: {total_amount_post} (Diferencia: {total_amount_post - total_amount_pre:.6f})")
-            _logger.info(
-                "===================================================================")
-
-            move._verificar_pagos()
-
+            
+            _logger.info("===================================================================")
+            _logger.info(f"[DUAL POST] FINAL Post de Factura ID: {move.id} - Nombre: {move.name}")
+            _logger.info(f"[DUAL POST] Tasa final (tax_today): {move.tax_today}")
+            
+            _logger.info(f"[DUAL POST] POST-POST - Base Imponible: {untaxed_amount_post} (Diferencia: {untaxed_amount_post - untaxed_amount_pre:.6f})")
+            _logger.info(f"[DUAL POST] POST-POST - Monto Impuesto (IVA): {tax_amount_post} (Diferencia: {tax_amount_post - tax_amount_pre:.6f})")
+            _logger.info(f"[DUAL POST] POST-POST - Monto Total: {total_amount_post} (Diferencia: {total_amount_post - total_amount_pre:.6f})")
+            _logger.info("===================================================================")
+            
+            move._verificar_pagos() 
+            
         return res
 
     @api.depends('asset_id', 'depreciation_value', 'asset_id.total_depreciable_value', 'asset_id.already_depreciated_amount_import')
@@ -177,32 +198,29 @@ class AccountMove(models.Model):
         super(AccountMove, self)._compute_depreciation_cumulative_value()
         for move in self:
             if move.asset_id:
-                move.asset_remaining_value_ref = (
-                    move.asset_remaining_value / move.tax_today) if move.tax_today != 0 else 0
-                move.asset_depreciated_value_ref = (
-                    move.asset_depreciated_value / move.tax_today) if move.tax_today != 0 else 0
+                move.asset_remaining_value_ref = (move.asset_remaining_value / move.tax_today) if move.tax_today != 0 else 0
+                move.asset_depreciated_value_ref = (move.asset_depreciated_value / move.tax_today) if move.tax_today != 0 else 0
 
     @api.depends('line_ids.balance_usd')
     def _compute_depreciation_value_ref(self):
         for move in self:
-            asset = move.asset_id or move.reversed_entry_id.asset_id
+            asset = move.asset_id or move.reversed_entry_id.asset_id 
             if asset:
                 account = asset.account_depreciation_expense_id if asset.asset_type != 'sale' else asset.account_depreciation_id
                 asset_depreciation = sum(
-                    move.line_ids.filtered(
-                        lambda l: l.account_id == account).mapped('balance_usd')
+                    move.line_ids.filtered(lambda l: l.account_id == account).mapped('balance_usd')
                 )
                 if any(
                         line.account_id == asset.account_asset_id
                         and float_compare(-line.balance_usd, asset.original_value_ref,
-                                          precision_rounding=asset.currency_id.rounding) == 0
+                                             precision_rounding=asset.currency_id.rounding) == 0
                         for line in move.line_ids
                 ):
                     account = asset.account_depreciation_id
                     asset_depreciation = (
-                        asset.original_value_ref
-                        - asset.salvage_value_ref
-                        - sum(
+                                asset.original_value_ref
+                                - asset.salvage_value_ref
+                                - sum(
                             move.line_ids.filtered(lambda l: l.account_id == account).mapped(
                                 'debit_usd' if asset.original_value_ref > 0 else 'credit_usd'
                             )
@@ -236,45 +254,24 @@ class AccountMove(models.Model):
     def _compute_date(self):
         res = super(AccountMove, self)._compute_date()
         for rec in self:
+            if rec.move_type in ('out_refund', 'in_refund'):
+                _logger.info("[DUAL] _compute_date(): Skipping tax_today recalc for refund %s (type: %s)", rec.id, rec.move_type)
+                continue
             if rec.invoice_date and rec.company_id.currency_id_dif and not rec.tax_today_edited:
-                new_rate_ids = self.env.company.currency_id_dif._get_rates(
-                    self.env.company, rec.invoice_date)
+                new_rate_ids = self.env.company.currency_id_dif._get_rates(self.env.company, rec.invoice_date)
                 if new_rate_ids:
-                    new_rate = 1 / \
-                        new_rate_ids[self.env.company.currency_id_dif.id]
+                    new_rate = 1 / new_rate_ids[self.env.company.currency_id_dif.id]
                     rec.tax_today = new_rate
 
     def _fecha_para_tax_today(self, vals=None):
-        # Para asientos de diario usamos la fecha del asiento
         if (vals and vals.get('move_type') == 'entry') or (not vals and self.move_type == 'entry'):
             if vals:
-                return vals.get('date') or self.date
-            return self.date
-
-        # Si vienen valores en vals, priorizamos invoice_date cuando esté explícito.
-        # Si no viene invoice_date en vals pero el registro ya tiene invoice_date
-        # y la fecha contable (vals['date']) es posterior, entonces usamos
-        # la invoice_date existente (caso: invoice_date < date en UI).
+                return vals.get('invoice_date') or vals.get('date') or self.date
+            return self.invoice_date or self.date
         if vals:
-            inv_date_vals = vals.get('invoice_date')
-            acc_date_vals = vals.get('date')
-            if inv_date_vals:
-                return inv_date_vals
-            # Si ya existe invoice_date en el registro y es anterior a la fecha contable
-            # preferimos la invoice_date del registro porque la tasa depende de la fecha de la factura
-            if getattr(self, 'invoice_date', False) and acc_date_vals:
-                try:
-                    inv_date_rec = fields.Date.to_date(self.invoice_date)
-                    acc_date = fields.Date.to_date(acc_date_vals)
-                    if inv_date_rec <= acc_date:
-                        return self.invoice_date
-                except Exception:
-                    # en caso de formato raro, fallback a la lógica original
-                    pass
-            return acc_date_vals or self.invoice_date or self.date
-
+            return vals.get('invoice_date') or vals.get('date') or self.invoice_date or self.date
         return self.invoice_date or self.date
-
+    
     def _get_tasa_usd_by_date(self, fecha, company=None):
         if isinstance(fecha, (fields.Date.__class__,)):
             fecha_str = fields.Date.to_string(fecha)
@@ -282,12 +279,18 @@ class AccountMove(models.Model):
             fecha_str = str(fecha)
         usd = self.env.ref('base.USD')
         company = company or self.env.company
+        # Buscar la última tasa hasta la fecha indicada (<=), ordenada desc por fecha.
         tasa = self.env['res.currency.rate'].search([
             ('currency_id', '=', usd.id),
-            ('name', '=', fecha_str),
+            ('name', '<=', fecha_str),
             ('company_id', '=', company.id)
-        ], limit=1)
-        return tasa.inverse_company_rate if tasa else 1.0
+        ], order='name desc', limit=1)
+        if tasa:
+            return tasa.inverse_company_rate
+        # Fallback: usar la tasa configurada en la moneda de referencia de la compañía
+        if company and company.currency_id_dif:
+            return company.currency_id_dif.inverse_rate or 1.0
+        return 1.0
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -295,50 +298,49 @@ class AccountMove(models.Model):
         for move, vals in zip(moves, vals_list):
             j = move.journal_id
             is_fx_journal = bool(getattr(j, 'is_exchange_diff_journal', False) or
-                                 getattr(j, 'is_fx_diff_journal', False))
+                                getattr(j, 'is_fx_diff_journal', False))
 
             if is_fx_journal and move.move_type == 'entry':
                 # Asientos de DIF CAMBIO
                 if move.tax_today != 0.0:
-                    move.with_context(skip_tax_today_update=True).write(
-                        {'tax_today': 0.0})
+                    move.with_context(skip_tax_today_update=True).write({'tax_today': 0.0})
                 move.line_ids.write({
                     'tax_today': 0.0,
                     'debit_usd': 0.0,
                     'credit_usd': 0.0,
                     'balance_usd': 0.0,
                 })
-                _logger.info(
-                    "[DUAL] create(): move %s (FX diff) -> tasa=0 y dual=0", move.id)
+                _logger.info("[DUAL] create(): move %s (FX diff) -> tasa=0 y dual=0", move.id)
 
             else:
                 # Documentos normales (facturas/pagos)
                 if move.move_type in ('out_refund', 'in_refund'):
-                    continue
+                    continue 
 
                 if vals.get('tax_today'):
-                    continue
+                    continue 
 
                 fecha = move._fecha_para_tax_today()
                 tasa = move._get_tasa_usd_by_date(fecha, move.company_id)
                 if move.tax_today != tasa:
-                    move.with_context(skip_tax_today_update=True).write(
-                        {'tax_today': tasa})
+                    move.with_context(skip_tax_today_update=True).write({'tax_today': tasa})
+                    _logger.info("[DUAL] create(): UPDATED tax_today for move %s. Date: %s, Rate: %s", move.id, fecha, tasa)
+                else:
+                    _logger.info("[DUAL] create(): Kept existing tax_today for move %s: %s", move.id, move.tax_today)
 
                 # Asegurar recompute dual currency en líneas
                 try:
                     lines = move.line_ids
                     # CORRECCIÓN DE ERROR (AttributeError): Llamamos al método por su nombre
-                    lines._debit_usd()
-                    lines._credit_usd()
+                    lines._debit_usd()        
+                    lines._credit_usd()       
                     lines._compute_balance_usd()
-                    _logger.info(
-                        "[DUAL] create(): move %s recompute dual OK", move.id)
+                    _logger.info("[DUAL] create(): move %s recompute dual OK", move.id)
                 except Exception as e:
-                    _logger.exception(
-                        "[DUAL] create(): fallo recompute dual en move %s: %s", move.id, e)
+                    _logger.exception("[DUAL] create(): fallo recompute dual en move %s: %s", move.id, e)
 
         return moves
+
 
     def write(self, vals):
         if self.env.context.get('skip_tax_today_update'):
@@ -349,60 +351,55 @@ class AccountMove(models.Model):
         for move in self:
             j = move.journal_id
             is_fx_journal = bool(getattr(j, 'is_exchange_diff_journal', False) or
-                                 getattr(j, 'is_fx_diff_journal', False))
+                                getattr(j, 'is_fx_diff_journal', False))
 
             if is_fx_journal and move.move_type == 'entry':
                 # Mantener tasa=0 y dual=0 en asientos de DIF CAMBIO
                 if move.tax_today != 0.0:
-                    super(AccountMove, move.with_context(
-                        skip_tax_today_update=True)).write({'tax_today': 0.0})
+                    super(AccountMove, move.with_context(skip_tax_today_update=True)).write({'tax_today': 0.0})
                 move.line_ids.write({
                     'tax_today': 0.0,
                     'debit_usd': 0.0,
                     'credit_usd': 0.0,
                     'balance_usd': 0.0,
                 })
-                _logger.info(
-                    "[DUAL] write(): move %s (FX diff) -> tasa=0 y dual=0", move.id)
+                _logger.info("[DUAL] write(): move %s (FX diff) -> tasa=0 y dual=0", move.id)
 
             else:
                 # Documentos normales (facturas/pagos)
-                necesita_recalc = any(k in vals for k in (
-                    'date', 'invoice_date', 'move_type', 'company_id'))
+                necesita_recalc = any(k in vals for k in ('date', 'invoice_date', 'move_type', 'company_id'))
 
                 if not necesita_recalc:
                     continue
 
                 if move.move_type in ('out_refund', 'in_refund'):
-                    continue
+                    continue 
 
                 if 'tax_today' in vals:
-                    continue
+                    continue 
 
                 fecha = move._fecha_para_tax_today(vals)
                 tasa = move._get_tasa_usd_by_date(fecha, move.company_id)
                 if move.tax_today != tasa:
-                    move.with_context(skip_tax_today_update=True).write(
-                        {'tax_today': tasa})
+                    move.with_context(skip_tax_today_update=True).write({'tax_today': tasa})
 
                 # Asegurar recompute dual currency en líneas
                 try:
                     lines = move.line_ids
                     # CORRECCIÓN DE ERROR (AttributeError): Llamamos al método por su nombre
-                    lines._debit_usd()
-                    lines._credit_usd()
+                    lines._debit_usd()        
+                    lines._credit_usd()       
                     lines._compute_balance_usd()
-                    _logger.info(
-                        "[DUAL] write(): move %s recompute dual OK", move.id)
+                    _logger.info("[DUAL] write(): move %s recompute dual OK", move.id)
                 except Exception as e:
-                    _logger.exception(
-                        "[DUAL] write(): fallo recompute dual en move %s: %s", move.id, e)
+                    _logger.exception("[DUAL] write(): fallo recompute dual en move %s: %s", move.id, e)
 
         return res
 
     @api.depends('currency_id')
     def _same_currency(self):
         self.same_currency = self.currency_id == self.env.company.currency_id
+
 
     @api.onchange('tax_today')
     def _onchange_tax_today(self):
@@ -412,38 +409,37 @@ class AccountMove(models.Model):
         """
         # BLOQUEO CRÍTICO: Si el flag está presente (creación desde SO en Bs o posteo), OMITIMOS la lógica de precios.
         if self.env.context.get('skip_dual_currency_conversion') or self.env.context.get('skip_tax_today_onchange'):
-            return
-
+            return 
+        
+        
         self = self.with_context(check_move_validity=False)
         for rec in self:
+            _logger.info("[DUAL] _onchange_tax_today triggering for move %s. Type: %s. Context skip: %s", 
+                         rec.id, rec.move_type, self.env.context.get('skip_tax_today_onchange'))
             rec.tax_today_edited = True
-
+            
             if not rec.move_type == 'entry':
                 # La lógica original que causó el error de Attribute y el IVA absurdo (al recalcular price_unit)
                 # se elimina para facturas/recibos, obligando a Odoo a usar los valores estables.
-
+                
                 # El for de lineas y la línea que usaba price_unit_usd se eliminan aquí.
 
                 rec._onchange_quick_edit_total_amount()
                 rec._onchange_quick_edit_line_ids()
-                rec._compute_tax_totals()
+                rec._compute_tax_totals() 
 
                 rec.invoice_line_ids._compute_totals()
             else:
                 # Lógica para asientos de diario (entry), donde SÍ se recalcula débito/crédito.
                 for aml in rec.line_ids:
                     if aml.debit_usd > 0:
-                        aml.with_context(
-                            check_move_validity=False).debit = aml.debit_usd * rec.tax_today
+                        aml.with_context(check_move_validity=False).debit = aml.debit_usd * rec.tax_today
                     elif aml.debit_usd == 0 and aml.debit > 0:
-                        aml.with_context(check_move_validity=False).debit_usd = (
-                            aml.debit / rec.tax_today) if rec.tax_today > 0 else 0
+                        aml.with_context(check_move_validity=False).debit_usd = (aml.debit / rec.tax_today) if rec.tax_today > 0 else 0
                     if aml.credit_usd > 0:
-                        aml.with_context(
-                            check_move_validity=False).credit = aml.credit_usd * rec.tax_today
+                        aml.with_context(check_move_validity=False).credit = aml.credit_usd * rec.tax_today
                     elif aml.credit_usd == 0 and aml.credit > 0:
-                        aml.with_context(check_move_validity=False).credit_usd = (
-                            aml.credit / rec.tax_today) if rec.tax_today > 0 else 0
+                        aml.with_context(check_move_validity=False).credit_usd = (aml.credit / rec.tax_today) if rec.tax_today > 0 else 0
 
     @api.onchange('currency_id')
     def _onchange_currency(self):
@@ -454,12 +450,12 @@ class AccountMove(models.Model):
                     l.currency_id = rec.currency_id
                     # Lógica ajustada: asumiendo que el precio no debe cambiar si la moneda pasa a ser local
                     # y no tenemos price_unit_usd para recalcular.
-                    l.price_unit = l.price_unit
+                    l.price_unit = l.price_unit 
             else:
                 for l in rec.invoice_line_ids:
                     l.currency_id = rec.currency_id
-                    l.price_unit = l.price_unit  # Mantener el precio actual
-
+                    l.price_unit = l.price_unit # Mantener el precio actual
+            
             for aml in rec.line_ids:
                 aml.currency_id = rec.currency_id
                 aml._compute_currency_rate()
@@ -474,8 +470,7 @@ class AccountMove(models.Model):
                 else:
                     edit_trm = False
             else:
-                edit_trm = self.env.user.has_group(
-                    'account_dual_currency.group_edit_trm')
+                edit_trm = self.env.user.has_group('account_dual_currency.group_edit_trm')
                 if edit_trm:
                     if rec.state == 'draft' and not rec.acuerdo_moneda:
                         edit_trm = True
@@ -483,52 +478,10 @@ class AccountMove(models.Model):
                         edit_trm = False
             # ##print(edit_trm)
             rec.edit_trm = edit_trm
-
-    @api.depends(
-        'line_ids.matched_debit_ids.debit_move_id.move_id.payment_id.is_matched',
-        'line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual',
-        'line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual_currency',
-        'line_ids.matched_credit_ids.credit_move_id.move_id.payment_id.is_matched',
-        'line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual',
-        'line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual_currency',
-        'line_ids.balance',
-        'line_ids.currency_id',
-        'line_ids.amount_currency',
-        'line_ids.amount_residual',
-        'line_ids.amount_residual_currency',
-        'line_ids.payment_id.state',
-        'line_ids.full_reconcile_id', 'tax_today', 'state')
-    def _compute_amount(self):
-        for move in self:
-            self.env.context = dict(
-                self.env.context, tasa_factura=move.tax_today, calcular_dual_currency=True)
-            super(AccountMove, self)._compute_amount()
-            total_residual = 0.0
-            total = 0.0
-            for line in move.line_ids:
-                if move.is_invoice(True):
-                    if line.display_type == 'tax' or (line.display_type == 'rounding' and line.tax_repartition_line_id):
-                        # Tax amount.
-                        total += line.balance_usd
-                    elif line.display_type in ('product', 'rounding'):
-                        total += line.balance_usd
-                    elif line.display_type == 'payment_term':
-                        # Residual amount.
-                        total_residual += line.amount_residual_usd
-                else:
-                    # === Miscellaneous journal entry ===
-                    if line.debit:
-                        total += line.balance
-            move.amount_residual_usd = total_residual
-            move.amount_total_signed_usd = abs(
-                total) if move.move_type == 'entry' else -total
-        self.env.context = dict(
-            self.env.context, tasa_factura=None, calcular_dual_currency=False)
-
     @api.depends(
         'tax_totals',
         'currency_id_dif',
-        'currency_id', 'tax_today')
+        'currency_id','tax_today')
     def _amount_all_usd(self):
         for rec in self:
             if rec.is_invoice(include_receipts=True) and rec.tax_totals:
@@ -539,28 +492,30 @@ class AccountMove(models.Model):
                     for l in income:
                         amount_tax += l['tax_group_amount']
                         print(l['tax_group_amount'])
-
+                        
                 print(f'amount tax: {amount_tax}')
                 amount_total = rec.tax_totals['amount_total']
+                _logger.info("[DUAL] _amount_all_usd BEFORE: ID=%s, Cur=%s, CompCur=%s, TaxToday=%s", rec.id, rec.currency_id.name, self.env.company.currency_id.name, rec.tax_today)
                 if rec.currency_id != self.env.company.currency_id:
+                    _logger.info("[DUAL] _amount_all_usd: Unknown/Foreign Currency Branch")
                     rec.amount_untaxed_usd = rec.amount_untaxed
                     print(f'amount tax if: {amount_tax}')
                     rec.amount_tax_usd = rec.amount_tax
                     rec.amount_total_usd = rec.amount_total
                     print(f' tax  today if: {rec.tax_today}')
                     rec.amount_untaxed_bs = rec.amount_untaxed_usd * rec.tax_today
-                    rec.amount_tax_bs = rec.amount_tax * rec.tax_today
+                    rec.amount_tax_bs = rec.amount_tax_usd * rec.tax_today 
                     rec.amount_total_bs = rec.amount_total_usd * rec.tax_today
                 else:
-                    rec.amount_untaxed_usd = (
-                        amount_untaxed / rec.tax_today) if rec.tax_today > 0 else 0
-                    rec.amount_tax_usd = (
-                        amount_tax / rec.tax_today) if rec.tax_today > 0 else 0
-                    rec.amount_total_usd = (
-                        amount_total / rec.tax_today) if rec.tax_today > 0 else 0
-                    rec.amount_untaxed_bs = rec.amount_untaxed
+                    _logger.info("[DUAL] _amount_all_usd: Local Currency Branch (Bs -> USD)")
+                    _logger.info("[DUAL] _amount_all_usd: amount_tax(Bs)=%s, amount_untaxed(Bs)=%s", amount_tax, amount_untaxed)
+                    
+                    rec.amount_untaxed_usd = (amount_untaxed / rec.tax_today) if rec.tax_today > 0 else 0
+                    rec.amount_tax_usd = (amount_tax / rec.tax_today) if rec.tax_today > 0 else 0
+                    rec.amount_total_usd = (amount_total / rec.tax_today) if rec.tax_today > 0 else 0
+                    rec.amount_untaxed_bs = rec.amount_untaxed 
                     print(f' tax  today else: {rec.tax_today}')
-
+                    
                     rec.amount_tax_bs = rec.amount_tax
                     rec.amount_total_bs = rec.amount_total
             else:
@@ -574,8 +529,7 @@ class AccountMove(models.Model):
     @api.depends('move_type', 'line_ids.amount_residual_usd')
     def _compute_payments_widget_reconciled_info_USD(self):
         for move in self:
-            payments_widget_vals = {'title': _(
-                'Less Payment'), 'outstanding': False, 'content': []}
+            payments_widget_vals = {'title': _('Less Payment'), 'outstanding': False, 'content': []}
             total_pagado = 0
             if move.state == 'posted' and move.is_invoice(include_receipts=True):
                 reconciled_vals = []
@@ -584,16 +538,14 @@ class AccountMove(models.Model):
                 for reconciled_partial in reconciled_partials:
                     counterpart_line = reconciled_partial['aml']
                     if counterpart_line.move_id.ref:
-                        reconciliation_ref = '%s (%s)' % (
-                            counterpart_line.move_id.name, counterpart_line.move_id.ref)
+                        reconciliation_ref = '%s (%s)' % (counterpart_line.move_id.name, counterpart_line.move_id.ref)
                     else:
                         reconciliation_ref = counterpart_line.move_id.name
                     if counterpart_line.amount_currency and counterpart_line.currency_id != counterpart_line.company_id.currency_id:
                         foreign_currency = counterpart_line.currency_id
                     else:
                         foreign_currency = False
-                    total_pagado = total_pagado + \
-                        float(reconciled_partial['amount'])
+                    total_pagado = total_pagado + float(reconciled_partial['amount'])
                     reconciled_vals.append({
                         'name': counterpart_line.name,
                         'journal_name': counterpart_line.journal_id.name,
@@ -611,8 +563,7 @@ class AccountMove(models.Model):
                         'amount_company_currency': formatLang(self.env, abs(counterpart_line.balance_usd),
                                                               currency_obj=counterpart_line.company_id.currency_id_dif),
                         'amount_foreign_currency': foreign_currency and formatLang(self.env,
-                                                                                   abs(
-                                                                                       counterpart_line.amount_currency),
+                                                                                   abs(counterpart_line.amount_currency),
                                                                                    currency_obj=foreign_currency)
                     })
                 payments_widget_vals['content'] = reconciled_vals
@@ -644,8 +595,7 @@ class AccountMove(models.Model):
                     'outstanding': False,
                     'content': reconciled_vals,
                 }
-                move.invoice_payments_widget_bs = json.dumps(
-                    info, default=date_utils.json_default)
+                move.invoice_payments_widget_bs = json.dumps(info, default=date_utils.json_default)
             else:
                 move.invoice_payments_widget_bs = json.dumps(False)
 
@@ -654,15 +604,12 @@ class AccountMove(models.Model):
         foreign_currency = self.currency_id if self.currency_id != self.company_id.currency_id else False
 
         reconciled_vals = []
-        pay_term_line_ids = self.line_ids.filtered(
-            lambda line: line.account_id.account_type in ('asset_receivable', 'liability_payable'))
-        partials = pay_term_line_ids.mapped(
-            'matched_debit_ids') + pay_term_line_ids.mapped('matched_credit_ids')
+        pay_term_line_ids = self.line_ids.filtered(lambda line: line.account_id.account_type in ('asset_receivable', 'liability_payable'))
+        partials = pay_term_line_ids.mapped('matched_debit_ids') + pay_term_line_ids.mapped('matched_credit_ids')
         for partial in partials:
             counterpart_lines = partial.debit_move_id + partial.credit_move_id
 
-            counterpart_line = counterpart_lines.filtered(
-                lambda line: line not in self.line_ids)
+            counterpart_line = counterpart_lines.filtered(lambda line: line not in self.line_ids)
 
             if counterpart_line.credit > 0:
                 amount = counterpart_line.credit
@@ -692,8 +639,7 @@ class AccountMove(models.Model):
 
     def _get_all_reconciled_invoice_partials_USD(self):
         self.ensure_one()
-        reconciled_lines = self.line_ids.filtered(
-            lambda line: line.account_id.account_type in ('asset_receivable', 'liability_payable'))
+        reconciled_lines = self.line_ids.filtered(lambda line: line.account_id.account_type in ('asset_receivable', 'liability_payable'))
         if not reconciled_lines:
             return {}
 
@@ -750,8 +696,7 @@ class AccountMove(models.Model):
                 JOIN account_move_line debit_line ON debit_line.id = part.debit_move_id
                 WHERE debit_line.move_id IN %s AND part.credit_move_id IN %s
             '''
-            self._cr.execute(
-                query, [tuple(exchange_move_ids), tuple(counterpart_line_ids)] * 2)
+            self._cr.execute(query, [tuple(exchange_move_ids), tuple(counterpart_line_ids)] * 2)
 
             for values in self._cr.dictfetchall():
                 counterpart_line_ids.add(values['counterpart_line_id'])
@@ -761,8 +706,7 @@ class AccountMove(models.Model):
                     'currency': self.company_id.currency_id,
                 })
 
-        counterpart_lines = {
-            x.id: x for x in self.env['account.move.line'].browse(counterpart_line_ids)}
+        counterpart_lines = {x.id: x for x in self.env['account.move.line'].browse(counterpart_line_ids)}
         for partial_values in partial_values_list:
             aml = counterpart_lines[partial_values['aml_id']]
             partial_values['aml'] = aml
@@ -775,8 +719,7 @@ class AccountMove(models.Model):
                 # Esto evita que pagos en Bs no muestren su equivalente en USD en el widget.
                 db_amount = partial_values.get('amount') or 0.0
                 if not db_amount:
-                    partial_values['amount'] = abs(
-                        getattr(aml, 'balance_usd', 0.0))
+                    partial_values['amount'] = abs(getattr(aml, 'balance_usd', 0.0))
                 else:
                     partial_values['amount'] = db_amount
 
@@ -849,12 +792,10 @@ class AccountMove(models.Model):
                 ('parent_state', '=', 'posted'),
                 ('partner_id', '=', move.commercial_partner_id.id),
                 ('reconciled', '=', False),
-                '|', '|', ('amount_residual', '!=', 0.0), ('amount_residual_usd',
-                                                           '!=', 0.0), ('amount_residual_currency', '!=', 0.0),
+                '|','|', ('amount_residual', '!=', 0.0), ('amount_residual_usd', '!=', 0.0),('amount_residual_currency', '!=', 0.0),
             ]
 
-            payments_widget_vals = {'outstanding': True,
-                                    'content': [], 'move_id': move.id}
+            payments_widget_vals = {'outstanding': True, 'content': [], 'move_id': move.id}
 
             if move.is_inbound():
                 domain.append(('balance', '<', 0.0))
@@ -909,19 +850,18 @@ class AccountMove(models.Model):
 
             if not payments_widget_vals['content']:
                 continue
-            # print(payments_widget_vals)
+            ###print(payments_widget_vals)
             move.invoice_outstanding_credits_debits_widget = payments_widget_vals
             move.invoice_has_outstanding = True
 
     @api.model
     def _prepare_move_for_asset_depreciation(self, vals):
-        move_vals = super(
-            AccountMove, self)._prepare_move_for_asset_depreciation(vals)
+        move_vals = super(AccountMove, self)._prepare_move_for_asset_depreciation(vals)
         asset_id = vals.get('asset_id')
         move_vals['tax_today'] = asset_id.tax_today
         move_vals['currency_id_dif'] = asset_id.currency_id_dif.id
-        # move_vals['asset_remaining_value_ref'] = move_vals['asset_remaining_value'] / asset_id.tax_today
-        # move_vals['asset_depreciated_value_ref'] = move_vals['asset_depreciated_value'] / asset_id.tax_today
+        #move_vals['asset_remaining_value_ref'] = move_vals['asset_remaining_value'] / asset_id.tax_today
+        #move_vals['asset_depreciated_value_ref'] = move_vals['asset_depreciated_value'] / asset_id.tax_today
         return move_vals
 
     def js_remove_outstanding_partial(self, partial_id):
@@ -955,8 +895,8 @@ class AccountMove(models.Model):
                             'default_currency_id_dif': rec.currency_id_dif.id,
                             'default_currency_id_company': rec.company_id.currency_id.id,
                             'default_amount': rec.amount_residual_usd,
-            },
-            }
+                        },
+                    }
 
 
 class SaleOrder(models.Model):
@@ -964,9 +904,9 @@ class SaleOrder(models.Model):
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         company_currency = self.env.company.currency_id
-
+        
         # Bloquea la conversión/recalculo si la SO está en moneda de la compañía.
         if any(order.currency_id == company_currency for order in self):
             return super(SaleOrder, self.with_context(skip_dual_currency_conversion=True))._create_invoices(grouped, final, date)
-
+            
         return super()._create_invoices(grouped, final, date)

@@ -167,6 +167,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                         account_move_line.currency_id,
                         account_move_line.amount_currency,
                         account_move_line.matching_number,
+                        NULL                                                                              AS partial_id,
                         COALESCE(account_move_line.invoice_date, account_move_line.date)                 AS invoice_date,
                         ROUND(account_move_line.debit * currency_table.rate, currency_table.precision)   AS debit,
                         ROUND(account_move_line.credit * currency_table.rate, currency_table.precision)  AS credit,
@@ -204,6 +205,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                         account_move_line.currency_id,
                         account_move_line.amount_currency,
                         account_move_line.matching_number,
+                        partial.id                                                                        AS partial_id,
                         COALESCE(account_move_line.invoice_date, account_move_line.date)                    AS invoice_date,
                         CASE WHEN aml_with_partner.balance > 0 THEN 0 ELSE ROUND(
                             partial.amount * currency_table.rate, currency_table.precision
@@ -255,6 +257,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                                         account_move_line.currency_id,
                                         account_move_line.amount_currency,
                                         account_move_line.matching_number,
+                                        NULL                                                                            AS partial_id,
                                         COALESCE(account_move_line.invoice_date, account_move_line.date)                 AS invoice_date,
                                         ROUND(account_move_line.debit_usd, currency_table.precision)   AS debit,
                                         ROUND(account_move_line.credit_usd, currency_table.precision)  AS credit,
@@ -292,6 +295,7 @@ class PartnerLedgerCustomHandler(models.AbstractModel):
                                         account_move_line.currency_id,
                                         account_move_line.amount_currency,
                                         account_move_line.matching_number,
+                                        partial.id                                                                        AS partial_id,
                                         COALESCE(account_move_line.invoice_date, account_move_line.date)                    AS invoice_date,
                                         CASE WHEN aml_with_partner.balance_usd > 0 THEN 0 ELSE ROUND(
                                             partial.amount_usd, currency_table.precision
