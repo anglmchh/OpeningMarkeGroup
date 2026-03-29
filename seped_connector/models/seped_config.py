@@ -531,15 +531,19 @@ class SepedConfig(models.Model):
             # RIF: campo propio de la localización venezolana, fallback a vat
             rif = getattr(partner, 'rif', '') or partner.vat or ''
 
+            # telefono: limpiar — solo números y +, sin espacios raros
+            telefono_raw = partner.phone or partner.mobile or ''
+            telefono = telefono_raw.strip() or None
+
             item = {
                 'codprov': str(partner.id),
-                'nombre': partner.name or '',
-                'rif': rif,
-                'direccion': direccion,
-                'telefono': partner.phone or partner.mobile or '',
-                'contacto': partner.name or '',
+                'nombre': (partner.name or '')[:200],
+                'rif': rif or None,
+                'direccion': direccion[:255] if direccion else None,
+                'telefono': telefono,
+                'contacto': (partner.name or '')[:100],
                 'estado': 'ACTIVO' if partner.active else 'INACTIVO',
-                'email': partner.email or '',
+                'email': partner.email.strip() if partner.email and partner.email.strip() else None,
                 'diascred': diascred,
                 'saldo': float(saldo or 0.0),
                 'codisb': self.codisb,
