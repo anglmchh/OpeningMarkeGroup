@@ -12,9 +12,17 @@
                     <field name="sync_type" widget="radio"/>
                 </group>
 
-                <!-- Resultado (visible sólo cuando hay resultado) -->
+                <!-- Resultado (visible solo cuando hay resultado) -->
                 <group string="Resultado" invisible="not result_message">
                     <field name="result_message" nolabel="1" readonly="1"/>
+                </group>
+
+                <!-- Log de errores (visible solo cuando hay errores) -->
+                <group string="⚠️ Log de Errores (para diagnóstico)" invisible="not error_log">
+                    <field name="error_log"
+                           nolabel="1"
+                           readonly="1"
+                           style="font-family: monospace; font-size: 11px; background-color: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 4px; padding: 8px;"/>
                 </group>
 
                 <footer>
