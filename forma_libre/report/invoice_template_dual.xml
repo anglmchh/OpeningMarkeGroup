@@ -10,7 +10,7 @@
 					<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 				</head>
                 <body>
-                    <main style="font-family: 'Open Sans', sans-serif;">
+                    <main style="font-family: 'Open Sans', sans-serif; margin-top: 1cm;">
 
                         <!-- Datos del Cliente y Factura -->
                         <table style="width: 100%; margin-bottom: 5px;">
