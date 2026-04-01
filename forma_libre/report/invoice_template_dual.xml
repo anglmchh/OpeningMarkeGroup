@@ -278,7 +278,7 @@
                             </table>
                         </div>
                         <!-- Indicador Original o Copia -->
-                        <div style="width: 100%; text-align: center; margin-top: 20px; font-size: 12px; position: relative;">
+                        <!-- <div style="width: 100%; text-align: center; margin-top: 20px; font-size: 12px; position: relative;">
                             <t t-if="doc.print_count > 1">
                                 <div style="
                                     position: absolute;
@@ -297,7 +297,7 @@
                                 </div>
                             </t>
                             <t t-else=""/>
-                        </div>
+                        </div> -->
 
                     </main>
                 </body>
