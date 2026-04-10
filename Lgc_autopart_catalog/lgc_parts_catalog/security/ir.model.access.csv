@@ -1,3 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_lgc_parts_catalog_user,lgc.parts.catalog.user,model_lgc_parts_catalog,base.group_user,1,1,1,1
-access_lgc_part_category_user,lgc.part.category.user,model_lgc_part_category,base.group_user,1,1,1,1
