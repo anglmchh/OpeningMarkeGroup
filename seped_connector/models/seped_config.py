@@ -540,17 +540,17 @@ class SepedConfig(models.Model):
 
             # telefono: limpiar — solo números y +, sin espacios raros
             telefono_raw = partner.phone or partner.mobile or ''
-            telefono = telefono_raw.strip() or None
+            telefono = telefono_raw.strip() or ''
 
             item = {
                 'codprov': str(partner.id),
                 'nombre': (partner.name or '')[:200],
-                'rif': rif or None,
-                'direccion': direccion[:255] if direccion else None,
+                'rif': rif or '',
+                'direccion': direccion[:255] if direccion else '',
                 'telefono': telefono,
                 'contacto': (partner.name or '')[:100],
                 'estado': 'ACTIVO' if partner.active else 'INACTIVO',
-                'email': partner.email.strip() if partner.email and partner.email.strip() else None,
+                'email': partner.email.strip() if partner.email and partner.email.strip() else '',
                 'diascred': diascred,
                 'saldo': float(saldo or 0.0),
                 'codisb': self.codisb,
@@ -559,9 +559,7 @@ class SepedConfig(models.Model):
                 'vencidoDs': float(vencido_ds or 0.0),
             }
 
-            # Eliminar campos nulos antes de enviar (Laravel: null falla 'required', ausente pasa 'sometimes')
-            item_clean = {k: v for k, v in item.items() if v is not None}
-            payload = {'proveedores': [item_clean]}
+            payload = {'proveedores': [item]}
             try:
                 self._make_request('POST', '/api/proveedores/cargar', payload)
                 total_sent += 1
@@ -570,7 +568,7 @@ class SepedConfig(models.Model):
                     '%s (id=%s): %s\nDATA enviada: %s' % (
                         partner.name, partner.id,
                         str(e.args[0]),
-                        _json.dumps(item_clean, ensure_ascii=False),
+                        _json.dumps(item, ensure_ascii=False),
                     )
                 )
 
