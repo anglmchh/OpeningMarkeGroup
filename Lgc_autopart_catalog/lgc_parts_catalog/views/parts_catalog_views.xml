@@ -1,0 +1,195 @@
+<odoo>
+    <!-- Vista List (Odoo 18) -->
+    <record id="view_lgc_parts_catalog_list" model="ir.ui.view">
+        <field name="name">lgc.parts.catalog.list</field>
+        <field name="model">lgc.parts.catalog</field>
+        <field name="arch" type="xml">
+            <list string="Catálogo de Piezas" decoration-info="source == 'epc'" decoration-success="confidence > 90">
+                <field name="image_128" widget="image" options="{'size': [40, 40]}" string=" "/>
+                <field name="vehicle_model"/>
+                <field name="category_id"/>
+                <field name="brand"/>
+                <field name="part_number"/>
+                <field name="list_price" widget="monetary"/>
+                <field name="confidence" widget="progressbar"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Vista Kanban Premium -->
+    <record id="view_lgc_parts_catalog_kanban" model="ir.ui.view">
+        <field name="name">lgc.parts.catalog.kanban</field>
+        <field name="model">lgc.parts.catalog</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" sample="1">
+                <field name="id"/>
+                <field name="part_number"/>
+                <field name="part_type"/>
+                <field name="category_id"/>
+                <field name="brand"/>
+                <field name="list_price"/>
+                <field name="vehicle_model"/>
+                <field name="vehicle_year"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click o_kanban_record d-flex flex-column p-0 mb-3 border-0 shadow-sm rounded-lg" style="width: 280px; background: white; overflow: hidden;">
+                            <!-- Imagen Superior -->
+                            <div class="o_kanban_image_full w-100 d-flex align-items-center justify-content-center bg-white p-3" style="height: 180px;">
+                                <field name="image_1920" widget="image" class="h-100 w-100 o_obj_contain"/>
+                                <div class="position-absolute t-0 r-0 p-2">
+                                    <span class="badge badge-pill badge-primary p-2" style="font-size: 1.1em;">
+                                        $<field name="list_price"/>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Contenido -->
+                            <div class="p-3 d-flex flex-column flex-grow-1">
+                                <div class="text-uppercase text-muted font-weight-bold mb-1" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+                                    <field name="brand"/>
+                                </div>
+                                <div class="h5 font-weight-bold text-dark mb-2">
+                                    <field name="part_type" t-if="record.part_type.raw_value"/>
+                                    <field name="category_id" t-if="!record.part_type.raw_value"/>
+                                </div>
+                                <div class="text-muted small mb-3">
+                                    <i class="fa fa-car mr-1"/> <field name="vehicle_model"/> <t t-if="record.vehicle_year.raw_value">(<field name="vehicle_year"/>)</t>
+                                </div>
+                                <div class="mt-auto d-flex justify-content-between align-items-center">
+                                    <span class="text-primary font-weight-bold" style="font-size: 0.9rem;">
+                                        <field name="part_number"/>
+                                    </span>
+                                    <div class="btn-group">
+                                        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 mr-1">Info</button>
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3">Cotizar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Vista Form -->
+    <record id="view_lgc_parts_catalog_form" model="ir.ui.view">
+        <field name="name">lgc.parts.catalog.form</field>
+        <field name="model">lgc.parts.catalog</field>
+        <field name="arch" type="xml">
+            <form string="Pieza del Catálogo">
+                <sheet>
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_128'}"/>
+                    <div class="oe_title">
+                        <label for="part_number" string="Número de Parte"/>
+                        <h1>
+                            <field name="part_number" placeholder="Ej: 213-456"/>
+                        </h1>
+                        <label for="brand" string="Marca de la Pieza"/>
+                        <h3>
+                            <field name="brand" placeholder="Ej: Denso"/>
+                        </h3>
+                    </div>
+                    <group>
+                        <group string="Ubicación y Pieza">
+                            <field name="category_id" options="{'no_create': True}"/>
+                            <field name="part_type"/>
+                            <field name="list_price" widget="monetary"/>
+                        </group>
+                        <group string="Compatibilidad">
+                            <field name="vehicle_make"/>
+                            <field name="vehicle_model"/>
+                            <field name="vehicle_year"/>
+                            <field name="vehicle_trim"/>
+                        </group>
+                    </group>
+                    <group string="Inteligencia">
+                        <group>
+                            <field name="source"/>
+                            <field name="confidence" widget="progressbar"/>
+                        </group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="times_confirmed"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vista Search con Search Panel -->
+    <record id="view_lgc_parts_catalog_search" model="ir.ui.view">
+        <field name="name">lgc.parts.catalog.search</field>
+        <field name="model">lgc.parts.catalog</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Piezas">
+                <field name="vehicle_model"/>
+                <field name="category_id"/>
+                <field name="part_number"/>
+                <field name="brand"/>
+                <separator/>
+                <filter string="Alta Confianza" name="high_confidence" domain="[('confidence', '>', 90)]"/>
+                
+                <searchpanel>
+                    <field name="category_id" icon="fa-th-list" enable_counters="1"/>
+                    <field name="vehicle_make" icon="fa-car" enable_counters="1"/>
+                </searchpanel>
+
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Modelo" name="group_model" context="{'group_by': 'vehicle_model'}"/>
+                    <filter string="Categoría" name="group_category" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Vista de Categorías -->
+    <record id="view_lgc_part_category_list" model="ir.ui.view">
+        <field name="name">lgc.part.category.list</field>
+        <field name="model">lgc.part.category</field>
+        <field name="arch" type="xml">
+            <list string="Categorías">
+                <field name="complete_name"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Acción Categorías -->
+    <record id="action_lgc_part_category" model="ir.actions.act_window">
+        <field name="name">Categorías de Piezas</field>
+        <field name="res_model">lgc.part.category</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Acción Catálogo -->
+    <record id="action_lgc_parts_catalog" model="ir.actions.act_window">
+        <field name="name">Catálogo de Piezas</field>
+        <field name="res_model">lgc.parts.catalog</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_lgc_parts_catalog_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Comienza a construir tu catálogo visual.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menús (Odoo 18) -->
+    <menuitem id="menu_lgc_parts_root" 
+              name="Catálogo" 
+              web_icon="lgc_parts_catalog,static/description/icon.png"
+              sequence="10"/>
+
+    <menuitem id="menu_lgc_parts_catalog" 
+              name="Productos del Catálogo" 
+              parent="menu_lgc_parts_root" 
+              action="action_lgc_parts_catalog" 
+              sequence="10"/>
+
+    <menuitem id="menu_lgc_part_category" 
+              name="Categorías" 
+              parent="menu_lgc_parts_root" 
+              action="action_lgc_part_category" 
+              sequence="20"/>
+</odoo>

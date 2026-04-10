@@ -1,0 +1,34 @@
+<odoo>
+    <data noupdate="1">
+        <!-- Categorías Principales -->
+        <record id="cat_frenos" model="lgc.part.category">
+            <field name="name">Frenos</field>
+        </record>
+        <record id="cat_motor" model="lgc.part.category">
+            <field name="name">Motor</field>
+        </record>
+        <record id="cat_suspension" model="lgc.part.category">
+            <field name="name">Suspensión</field>
+        </record>
+        <record id="cat_electrico" model="lgc.part.category">
+            <field name="name">Eléctrico</field>
+        </record>
+        <record id="cat_carroceria" model="lgc.part.category">
+            <field name="name">Carrocería</field>
+        </record>
+
+        <!-- Subcategorías ejemplo -->
+        <record id="cat_frenos_pastillas" model="lgc.part.category">
+            <field name="name">Pastillas de Freno</field>
+            <field name="parent_id" ref="cat_frenos"/>
+        </record>
+        <record id="cat_frenos_discos" model="lgc.part.category">
+            <field name="name">Discos de Freno</field>
+            <field name="parent_id" ref="cat_frenos"/>
+        </record>
+        <record id="cat_motor_filtros" model="lgc.part.category">
+            <field name="name">Filtros</field>
+            <field name="parent_id" ref="cat_motor"/>
+        </record>
+    </data>
+</odoo>
