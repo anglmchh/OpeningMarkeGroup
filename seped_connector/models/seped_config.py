@@ -362,40 +362,10 @@ class SepedConfig(models.Model):
     # Actualización de Stock (PATCH)
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _sync_stock_for_products(self, products):
-        """
-        Método interno para enviar el stock de un subset de productos.
-        """
-        self.ensure_one()
-        total_sent = 0
-        errors = []
-
-        # Filtrar solo productos que tengan codprod
-        valid_products = products.filtered(lambda p: p.default_code)
-
-        for i in range(0, len(valid_products), self.batch_size):
-            batch = valid_products[i:i + self.batch_size]
-            items = [
-                {'codprod': prod.default_code, 'cantidad': prod.qty_available}
-                for prod in batch
-            ]
-            payload = {
-                'codisb': self.codisb,
-                'items': items,
-            }
-            try:
-                result = self._make_request('PATCH', '/api/inventario/productos/stock', payload)
-                total_sent += len(items)
-                _logger.info('SEPED sync_stock sub-lote %d OK: %s', i // self.batch_size + 1, result)
-            except UserError as e:
-                errors.append(str(e.args[0]))
-                _logger.error('SEPED sync_stock sub-lote %d error: %s', i // self.batch_size + 1, e)
-                
-        return total_sent, errors
-
     def action_sync_stock(self):
         """
-        Envía únicamente las cantidades actuales a SEPED (endpoint PATCH) para todos los productos.
+        Envía únicamente las cantidades actuales a SEPED (endpoint PATCH).
+        Es más liviano que el Full Sync y está pensado para ejecución frecuente.
         """
         self.ensure_one()
         ProductProduct = self.env['product.product']
@@ -408,7 +378,26 @@ class SepedConfig(models.Model):
         if not products:
             return self._notify(_('Sin productos'), _('No se encontraron productos con código interno para actualizar stock.'), 'warning')
 
-        total_sent, errors = self._sync_stock_for_products(products)
+        total_sent = 0
+        errors = []
+
+        for i in range(0, len(products), self.batch_size):
+            batch = products[i:i + self.batch_size]
+            items = [
+                {'codprod': prod.default_code, 'cantidad': prod.qty_available}
+                for prod in batch
+            ]
+            payload = {
+                'codisb': self.codisb,
+                'items': items,
+            }
+            try:
+                result = self._make_request('PATCH', '/api/inventario/productos/stock', payload)
+                total_sent += len(items)
+                _logger.info('SEPED sync_stock lote %d OK: %s', i // self.batch_size + 1, result)
+            except UserError as e:
+                errors.append(str(e.args[0]))
+                _logger.error('SEPED sync_stock lote %d error: %s', i // self.batch_size + 1, e)
 
         self.last_stock_update = fields.Datetime.now()
 
