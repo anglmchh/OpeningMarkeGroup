@@ -11,20 +11,20 @@
         sequence="90"
         web_icon="seped_connector,static/description/icon.png"/>
 
+    <!-- Sub-menú: Configuración (Debe ser el primero para que Odoo dibuje la barra lateral) -->
+    <menuitem
+        id="menu_seped_config"
+        name="Configuración"
+        parent="menu_seped_root"
+        sequence="10"
+        action="action_seped_config"/>
+        
     <!-- Sub-menú: Sincronización -->
     <menuitem
         id="menu_seped_sync"
         name="Sincronizar"
         parent="menu_seped_root"
-        sequence="10"
-        action="action_seped_sync_wizard"/>
-
-    <!-- Sub-menú: Configuración -->
-    <menuitem
-        id="menu_seped_config"
-        name="Configuración"
-        parent="menu_seped_root"
         sequence="20"
-        action="action_seped_config"/>
+        action="action_seped_sync_wizard"/>
 
 </odoo>
