@@ -15,6 +15,9 @@
                                 <p style="font-size:18px;color:red; text-align:left;">
                                     Comprobante de Retención de ISLR
                                 </p>
+                                <p style="font-size:14px; text-align:left; margin-top:6px;">
+                                    Numero de Retencion: <span t-esc="d.number or ''"/>
+                                </p>
                             </td>
                         </tr>
                     </table>

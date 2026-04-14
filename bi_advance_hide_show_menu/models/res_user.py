@@ -9,6 +9,14 @@ from odoo.http import request
 from decorator import decorator
 _logger = logging.getLogger(__name__)
 
+
+def _has_http_request():
+    """Return True only when running inside an active HTTP request context."""
+    try:
+        return bool(request and request.session)
+    except Exception:
+        return False
+
 def assert_log_admin_access(method):
     """Decorator checking that the calling user is an administrator, and logging the call.
 
@@ -17,7 +25,7 @@ def assert_log_admin_access(method):
     """
     def check_and_log(method, self, *args, **kwargs):
         user = self.env.user
-        origin = request.httprequest.remote_addr if request else 'n/a'
+        origin = request.httprequest.remote_addr if _has_http_request() else 'n/a'
         log_data = (method.__name__, self.sudo().mapped('name'), user.login, user.id, origin)
         if not self.env.is_admin():
             _logger.warning('DENY access to module.%s on %s to user %s ID #%s via %s', *log_data)
@@ -47,7 +55,7 @@ class Module(models.Model):
         # configure the CoA on his own company, which makes no sense.
         menus_obj = self.env['ir.ui.menu'].search([],order="id desc",limit=1)
         menus_obj.write({'is_write':True})
-        if request:
+        if _has_http_request():
             request.allowed_company_ids = self.env.companies.ids
         return self._button_immediate_function(type(self).button_install)
 
@@ -100,7 +108,8 @@ class IrUiMenu(models.Model):
 
     def write(self, vals):
         res = super(IrUiMenu, self).write(vals)
-        request.env['ir.ui.menu'].load_menus(request.session.debug)
+        if _has_http_request():
+            request.env['ir.ui.menu'].load_menus(request.session.debug)
         return res
 
     @api.model
@@ -299,7 +308,7 @@ class IrUiMenu(models.Model):
             
         else:
             menus_obj.write({'is_write':False})
-            return super(IrUiMenu, self).load_menus(request.session.debug)
+            return super(IrUiMenu, self).load_menus(debug)
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
 
