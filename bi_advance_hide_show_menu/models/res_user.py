@@ -3,6 +3,7 @@
 
 from odoo import models, fields, api, tools
 from odoo.tools.safe_eval import safe_eval
+from odoo.exceptions import AccessDenied
 import operator
 import logging
 from odoo.http import request
@@ -13,7 +14,10 @@ _logger = logging.getLogger(__name__)
 def _has_http_request():
     """Return True only when running inside an active HTTP request context."""
     try:
-        return bool(request and request.session)
+        # During module install/upgrade, `request` may exist but be only
+        # partially initialized (e.g. `request.env` is None). We only treat it
+        # as an active HTTP request when env + session are both available.
+        return bool(request and getattr(request, 'env', None) and getattr(request, 'session', None))
     except Exception:
         return False
 
@@ -109,7 +113,11 @@ class IrUiMenu(models.Model):
     def write(self, vals):
         res = super(IrUiMenu, self).write(vals)
         if _has_http_request():
-            request.env['ir.ui.menu'].load_menus(request.session.debug)
+            try:
+                request.env['ir.ui.menu'].load_menus(request.session.debug)
+            except Exception:
+                # Never break registry/init on best-effort menu refresh.
+                _logger.debug('Skipping menu reload (no request env/session)', exc_info=True)
         return res
 
     @api.model
