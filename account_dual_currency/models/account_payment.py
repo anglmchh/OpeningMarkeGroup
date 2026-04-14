@@ -41,7 +41,43 @@ class AccountMove(models.Model):
     )
 
     def _get_default_tasa(self):
-        return self.env.company.currency_id_dif.rate
+        """Retorna la tasa comercial (Bs por divisa), no la tasa técnica inversa."""
+        company = self.env.company
+        currency = company.currency_id_dif
+        if not currency:
+            return 1.0
+
+        today = fields.Date.context_today(self)
+        rate_obj = self.env['res.currency.rate'].search([
+            ('currency_id', '=', currency.id),
+            ('company_id', '=', company.id),
+            ('name', '<=', today),
+        ], order='name desc', limit=1)
+
+        if rate_obj and rate_obj.inverse_company_rate:
+            return rate_obj.inverse_company_rate
+
+        if currency.rate:
+            return 1.0 / currency.rate
+
+        return 1.0
+
+    @api.onchange('date', 'currency_id_dif', 'company_id')
+    def _onchange_tax_today_from_date(self):
+        """Mantiene la tasa BCV comercial según fecha/compañía en pagos manuales."""
+        for rec in self:
+            if rec.state != 'draft' or not rec.company_id or not rec.currency_id_dif:
+                continue
+
+            payment_date = rec.date or fields.Date.context_today(rec)
+            rate_obj = rec.env['res.currency.rate'].search([
+                ('currency_id', '=', rec.currency_id_dif.id),
+                ('company_id', '=', rec.company_id.id),
+                ('name', '<=', payment_date),
+            ], order='name desc', limit=1)
+
+            if rate_obj and rate_obj.inverse_company_rate:
+                rec.tax_today = rate_obj.inverse_company_rate
 
     @api.depends('currency_id_dif', 'currency_id', 'amount', 'tax_today')
     def _currency_equal(self):

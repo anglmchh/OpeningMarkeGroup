@@ -378,7 +378,7 @@ class AccountPaymentRegister(models.TransientModel):
             'partner_bank_id': self.partner_bank_id.id,
             'payment_method_line_id': self.payment_method_line_id.id,
             'destination_account_id': self.line_ids[0].account_id.id,
-            'tax_today': self.tax_today,  # 👈 Condicionado correctamente
+            'tax_today': tasa_aplicada,
             'currency_id_dif': self.currency_id_dif.id,
             'aplicar_igtf': self.aplicar_igtf,
             'journal_igtf_id': self.journal_igtf_id.id,
@@ -428,7 +428,7 @@ class AccountPaymentRegister(models.TransientModel):
 
         # 1. Crear el pago base (Super)
         payments = super(AccountPaymentRegister, self.with_context(
-            tasa_factura=self.tax_today,
+            tasa_factura=self.tax_invoice,
             calcular_dual_currency=True
         ))._create_payments()
 
