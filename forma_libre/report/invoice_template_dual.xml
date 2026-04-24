@@ -3,7 +3,6 @@
 <template id="report_invoice_template_dual">
 
     <t t-name="forma_libre.report_invoice_template_dual">
-    <t t-name="forma_libre.report_invoice_template_dual">
     <t t-call="web.html_container">
         <t t-foreach="docs" t-as="doc">
             <html lang="es">
@@ -49,11 +48,10 @@
                         }
                         /* Contenedor de totales dinámico (sin fixed ni absolute) */
                         .totales-wrapper {
-                            position: absolute;
-                            top: 210px;  /* Ajusta este valor según tus cálculos */
-                            width: 99%;
+                            width: 100%;
+                            margin-top: 10px;
                             border: 1px solid black;
-                            left: 2px;
+                            padding: 0px;
                         }
                         .reimpresion {
                             position: absolute;
@@ -82,7 +80,7 @@
                                     <p style="margin:0;"><strong>TELÉFONO:</strong> <t t-esc="doc.partner_id.phone or ''"/></p>
                                 </td>
                                 <td style="width: 45%; text-align: right; vertical-align: top;">
-                                    <p style="margin:0; font-size: 11px"><strong>
+                                    <p style="margin:0;"><strong>
                                         <t t-if="doc.move_type == 'out_invoice'">
                                             <t t-if="doc.debit_origin_id">Nota de Débito:</t>
                                             <t t-else="">Número de Factura:</t>
@@ -292,8 +290,6 @@
             </html>
         </t>
     </t>
-</t>
-
 </t>
 
 </template>
