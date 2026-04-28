@@ -268,11 +268,8 @@ class SepedConfig(models.Model):
 
     def action_test_connection(self):
         """
-        Prueba la conectividad con la API SEPED enviando un sync de un
-        producto ficticio y validando la respuesta. Si recibe 401 ó 422
-        la excepción ya informa al usuario.
-        También detecta la IP pública de salida del servidor para facilitar
-        la configuración del whitelist en SEPED.
+        Prueba la conectividad con la API SEPED usando un GET ligero a /api/categorias.
+        No modifica datos en SEPED. Detecta la IP pública de salida del servidor.
         """
         self.ensure_one()
 
@@ -285,27 +282,37 @@ class SepedConfig(models.Model):
         except Exception:
             pass
 
-        # Enviamos un payload mínimo para verificar autenticación/conectividad
-        test_payload = {
-            'codisb': self.codisb,
-            'productos': [
-                {
-                    'codprod': '__TEST__',
-                    'barra': '0000000000000',
-                    'desprod': 'Test de Conexión Odoo',
-                    'cantidad': 0,
-                    'precio1': 0.0,
-                }
-            ],
-        }
+        # GET liviano a /api/categorias — confirma auth y conectividad sin enviar datos
         try:
-            self._make_request('POST', '/api/inventario/productos/sync', test_payload)
+            url = self.base_url.rstrip('/') + '/api/categorias'
+            headers = self._get_headers()
+            response = requests.get(url, headers=headers, params={'codisb': self.codisb}, timeout=15)
+
+            if response.status_code == 401:
+                raise UserError(_('Autenticación fallida (401). Verifique que la API Key sea correcta.'))
+            if not response.ok:
+                raise UserError(_(
+                    'Error inesperado de la API SEPED [%s]: %s'
+                ) % (response.status_code, response.text[:300]))
+
             msg_title = _('Conexión exitosa')
-            msg_body = _('La API SEPED respondió correctamente. La configuración es válida.\nIP de salida del servidor: %s') % outbound_ip
+            msg_body = _(
+                'La API SEPED respondió correctamente (HTTP %s).\n'
+                'La configuración es válida.\n\n'
+                'IP de salida del servidor: %s'
+            ) % (response.status_code, outbound_ip)
             msg_type = 'success'
         except UserError as e:
             msg_title = _('Error de conexión')
             msg_body = _('%s\n\nIP de salida del servidor: %s\n(Esta IP debe estar autorizada en SEPED)') % (str(e.args[0]), outbound_ip)
+            msg_type = 'danger'
+        except requests.exceptions.ConnectionError:
+            msg_title = _('Error de conexión')
+            msg_body = _('No se pudo conectar con %s\nVerifique la URL base.\n\nIP de salida: %s') % (self.base_url, outbound_ip)
+            msg_type = 'danger'
+        except requests.exceptions.Timeout:
+            msg_title = _('Timeout')
+            msg_body = _('La API SEPED no respondió en 15 segundos.\n\nIP de salida: %s') % outbound_ip
             msg_type = 'danger'
 
         return {
