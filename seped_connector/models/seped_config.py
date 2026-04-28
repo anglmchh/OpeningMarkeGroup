@@ -105,6 +105,34 @@ class SepedConfig(models.Model):
         readonly=True,
     )
 
+    # ── Mapeo de Listas de Precio → Niveles SEPED ────────────────────────────
+    pricelist_precio1_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio1',
+        help='Pricelist de Odoo que se enviará como precio1 a SEPED. '
+             'Si no se configura, se usa el precio de venta base (lst_price).',
+    )
+    pricelist_precio2_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio2',
+        help='Pricelist de Odoo que se enviará como precio2 a SEPED.',
+    )
+    pricelist_precio3_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio3',
+        help='Pricelist de Odoo que se enviará como precio3 a SEPED.',
+    )
+    pricelist_precio4_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio4',
+        help='Pricelist de Odoo que se enviará como precio4 a SEPED.',
+    )
+    pricelist_precio5_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio5',
+        help='Pricelist de Odoo que se enviará como precio5 a SEPED.',
+    )
+
     # ── Configuración de pedidos ──────────────────────────────────────────────
     order_limit = fields.Integer(
         string='Límite de Pedidos por Consulta',
@@ -142,6 +170,26 @@ class SepedConfig(models.Model):
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         }
+
+    def _get_pricelist_price(self, pricelist, product):
+        """
+        Calcula el precio de un producto según una lista de precio (Odoo 17).
+
+        :param pricelist: record de product.pricelist
+        :param product: record de product.product
+        :returns: float con el precio calculado; lst_price como fallback ante error inesperado
+        """
+        if not pricelist or not product:
+            return 0.0
+        try:
+            return pricelist._get_product_price(product, 1.0)
+        except Exception:
+            _logger.warning(
+                'SEPED _get_pricelist_price: no se pudo calcular precio '
+                'para producto %s en pricelist %s, usando lst_price.',
+                product.display_name, pricelist.name,
+            )
+            return product.lst_price
 
     def _make_request(self, method, endpoint, payload=None):
         """
@@ -220,11 +268,8 @@ class SepedConfig(models.Model):
 
     def action_test_connection(self):
         """
-        Prueba la conectividad con la API SEPED enviando un sync de un
-        producto ficticio y validando la respuesta. Si recibe 401 ó 422
-        la excepción ya informa al usuario.
-        También detecta la IP pública de salida del servidor para facilitar
-        la configuración del whitelist en SEPED.
+        Prueba la conectividad con la API SEPED usando un GET ligero a /api/categorias.
+        No modifica datos en SEPED. Detecta la IP pública de salida del servidor.
         """
         self.ensure_one()
 
@@ -237,27 +282,37 @@ class SepedConfig(models.Model):
         except Exception:
             pass
 
-        # Enviamos un payload mínimo para verificar autenticación/conectividad
-        test_payload = {
-            'codisb': self.codisb,
-            'productos': [
-                {
-                    'codprod': '__TEST__',
-                    'barra': '0000000000000',
-                    'desprod': 'Test de Conexión Odoo',
-                    'cantidad': 0,
-                    'precio1': 0.0,
-                }
-            ],
-        }
+        # GET liviano a /api/categorias — confirma auth y conectividad sin enviar datos
         try:
-            self._make_request('POST', '/api/inventario/productos/sync', test_payload)
+            url = self.base_url.rstrip('/') + '/api/categorias'
+            headers = self._get_headers()
+            response = requests.get(url, headers=headers, params={'codisb': self.codisb}, timeout=15)
+
+            if response.status_code == 401:
+                raise UserError(_('Autenticación fallida (401). Verifique que la API Key sea correcta.'))
+            if not response.ok:
+                raise UserError(_(
+                    'Error inesperado de la API SEPED [%s]: %s'
+                ) % (response.status_code, response.text[:300]))
+
             msg_title = _('Conexión exitosa')
-            msg_body = _('La API SEPED respondió correctamente. La configuración es válida.\nIP de salida del servidor: %s') % outbound_ip
+            msg_body = _(
+                'La API SEPED respondió correctamente (HTTP %s).\n'
+                'La configuración es válida.\n\n'
+                'IP de salida del servidor: %s'
+            ) % (response.status_code, outbound_ip)
             msg_type = 'success'
         except UserError as e:
             msg_title = _('Error de conexión')
             msg_body = _('%s\n\nIP de salida del servidor: %s\n(Esta IP debe estar autorizada en SEPED)') % (str(e.args[0]), outbound_ip)
+            msg_type = 'danger'
+        except requests.exceptions.ConnectionError:
+            msg_title = _('Error de conexión')
+            msg_body = _('No se pudo conectar con %s\nVerifique la URL base.\n\nIP de salida: %s') % (self.base_url, outbound_ip)
+            msg_type = 'danger'
+        except requests.exceptions.Timeout:
+            msg_title = _('Timeout')
+            msg_body = _('La API SEPED no respondió en 15 segundos.\n\nIP de salida: %s') % outbound_ip
             msg_type = 'danger'
 
         return {
@@ -270,6 +325,71 @@ class SepedConfig(models.Model):
                 'sticky': msg_type == 'danger',
             },
         }
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Diagnóstico: Vista Previa de Precios
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_preview_prices(self):
+        """
+        Genera un reporte de texto mostrando qué precios se enviarían a SEPED
+        para los primeros 20 productos. No llama a la API — solo sirve para
+        validar el mapeo de listas de precio configurado.
+
+        :returns: str con el reporte formateado
+        """
+        self.ensure_one()
+        products = self.env['product.product'].search([
+            ('active', '=', True),
+            ('sale_ok', '=', True),
+        ], limit=20)
+
+        if not products:
+            return '⚠ No se encontraron productos activos para previsualizar.'
+
+        # Encabezado con las listas configuradas
+        def pl_name(field_name):
+            pl = getattr(self, field_name)
+            return pl.name if pl else '(lst_price base)'
+
+        lines = [
+            '═' * 60,
+            '  VISTA PREVIA DE PRECIOS → SEPED',
+            '═' * 60,
+            '  precio1 : %s' % pl_name('pricelist_precio1_id'),
+            '  precio2 : %s' % pl_name('pricelist_precio2_id'),
+            '  precio3 : %s' % pl_name('pricelist_precio3_id'),
+            '  precio4 : %s' % pl_name('pricelist_precio4_id'),
+            '  precio5 : %s' % pl_name('pricelist_precio5_id'),
+            '─' * 60,
+            '  %-12s %-30s %8s %8s %8s' % ('Código', 'Producto', 'P1', 'P2', 'P3'),
+            '─' * 60,
+        ]
+
+        for prod in products:
+            p1 = (
+                self._get_pricelist_price(self.pricelist_precio1_id, prod)
+                if self.pricelist_precio1_id else prod.lst_price
+            )
+            p2 = self._get_pricelist_price(self.pricelist_precio2_id, prod) if self.pricelist_precio2_id else 0.0
+            p3 = self._get_pricelist_price(self.pricelist_precio3_id, prod) if self.pricelist_precio3_id else 0.0
+            p4 = self._get_pricelist_price(self.pricelist_precio4_id, prod) if self.pricelist_precio4_id else 0.0
+            p5 = self._get_pricelist_price(self.pricelist_precio5_id, prod) if self.pricelist_precio5_id else 0.0
+
+            code = (prod.default_code or str(prod.id))[:12]
+            name = (prod.name or '')[:30]
+            lines.append('  %-12s %-30s %8.2f %8.2f %8.2f' % (code, name, p1, p2, p3))
+            if p4 or p5:
+                lines.append('  %43s p4=%-8.2f p5=%-8.2f' % ('', p4, p5))
+
+        lines += [
+            '─' * 60,
+            '  Total productos mostrados: %d (máx. 20)' % len(products),
+            '  ⚠ Estos valores son solo una previsualización local.',
+            '  No se envió ningún dato a SEPED.',
+            '═' * 60,
+        ]
+        return '\n'.join(lines)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Sincronización de Productos (Full Sync)
@@ -303,12 +423,27 @@ class SepedConfig(models.Model):
                 taxes = prod.taxes_id or prod.product_tmpl_id.taxes_id
                 iva_val = taxes[0].amount if taxes else 0.0
 
+                # ── Precios desde listas de precio configuradas ──────────────
+                precio1 = (
+                    self._get_pricelist_price(self.pricelist_precio1_id, prod)
+                    if self.pricelist_precio1_id
+                    else prod.lst_price
+                )
+                precio2 = self._get_pricelist_price(self.pricelist_precio2_id, prod) if self.pricelist_precio2_id else 0.0
+                precio3 = self._get_pricelist_price(self.pricelist_precio3_id, prod) if self.pricelist_precio3_id else 0.0
+                precio4 = self._get_pricelist_price(self.pricelist_precio4_id, prod) if self.pricelist_precio4_id else 0.0
+                precio5 = self._get_pricelist_price(self.pricelist_precio5_id, prod) if self.pricelist_precio5_id else 0.0
+
                 item = {
                     'codprod': prod.default_code or str(prod.id),
                     'barra': prod.barcode or '',
                     'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
-                    'precio1': prod.lst_price,
+                    'precio1': precio1,
+                    'precio2': precio2,
+                    'precio3': precio3,
+                    'precio4': precio4,
+                    'precio5': precio5,
                     # Categoría — mismo codcat que se envía en action_sync_categories
                     'codcat': str(prod.categ_id.id) if prod.categ_id else '',
                     # Campos finales validados con soporte técnico de SEPED

@@ -18,27 +18,29 @@ class SepedSyncWizard(models.TransientModel):
     sync_type = fields.Selection(
         selection=[
             # ── Inventario ──
-            ('products',    'Productos (Full Sync)'),
-            ('stock',       'Stock (Actualización de cantidades)'),
-            ('lotes',       'Lotes (existencias por lote)'),
-            ('categories',  'Categorías de productos'),
-            ('prodfalla',   'Productos sin Stock / Falla'),
+            ('products',        'Productos (Full Sync)'),
+            ('stock',           'Stock (Actualización de cantidades)'),
+            ('lotes',           'Lotes (existencias por lote)'),
+            ('categories',      'Categorías de productos'),
+            ('prodfalla',       'Productos sin Stock / Falla'),
+            # ── Diagnóstico ──
+            ('preview_prices',  '🔍 Vista Previa de Precios (sin enviar a SEPED)'),
             # ── Terceros ──
-            ('clients',     'Clientes (Full Sync)'),
-            ('vendors',     'Proveedores'),
-            ('vendedores',  'Vendedores'),
+            ('clients',         'Clientes (Full Sync)'),
+            ('vendors',         'Proveedores'),
+            ('vendedores',      'Vendedores'),
             # ── Facturación ──
-            ('invoices',    'Facturas (cabeceras + renglones)'),
-            ('ventares',    'Resumen de Ventas del Día'),
-            ('cxc',         'Cuentas por Cobrar (CxC)'),
-            ('cxp',         'Cuentas por Pagar (CxP)'),
+            ('invoices',        'Facturas (cabeceras + renglones)'),
+            ('ventares',        'Resumen de Ventas del Día'),
+            ('cxc',             'Cuentas por Cobrar (CxC)'),
+            ('cxp',             'Cuentas por Pagar (CxP)'),
             # ── Finanzas ──
-            ('banks',       'Cuentas Bancarias'),
-            ('monedas',     'Monedas y Tasas de Cambio'),
+            ('banks',           'Cuentas Bancarias'),
+            ('monedas',         'Monedas y Tasas de Cambio'),
             # ── Pedidos ──
-            ('orders',      'Pedidos (Desde SEPED a Odoo)'),
+            ('orders',          'Pedidos (Desde SEPED a Odoo)'),
             # ── Todo ──
-            ('all',         'Todo (Sincronización completa)'),
+            ('all',             'Todo (Sincronización completa)'),
         ],
         string='Tipo de Sincronización',
         required=True,
@@ -85,6 +87,15 @@ class SepedSyncWizard(models.TransientModel):
             _run('Categorías', 'action_sync_categories')
         if t in ('prodfalla', 'all'):
             _run('Productos sin Stock', 'action_sync_prodfalla')
+
+        # ── Diagnóstico: Vista Previa de Precios ──
+        if t == 'preview_prices':
+            try:
+                preview = config.action_preview_prices()
+                messages.append(preview)
+            except Exception as e:
+                messages.append('✗ Vista Previa: %s' % str(e))
+                errors.append('Error en Vista Previa:\n%s' % str(e))
 
         # ── Terceros ──
         if t in ('clients', 'all'):

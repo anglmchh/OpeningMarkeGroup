@@ -86,6 +86,18 @@
                                     <field name="last_stock_update" readonly="1" widget="datetime"/>
                                 </div>
                             </group>
+                            <group string="Listas de Precio → Niveles SEPED"
+                                   help="Mapea cada lista de precio de Odoo al nivel de precio correspondiente en SEPED. Si precio1 no está configurado, se usa el precio de venta base del producto.">
+                                <group>
+                                    <field name="pricelist_precio1_id" options="{'no_create': True}"/>
+                                    <field name="pricelist_precio2_id" options="{'no_create': True}"/>
+                                    <field name="pricelist_precio3_id" options="{'no_create': True}"/>
+                                </group>
+                                <group>
+                                    <field name="pricelist_precio4_id" options="{'no_create': True}"/>
+                                    <field name="pricelist_precio5_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
                             <group string="Lotes y Categorias">
                                 <div class="o_row mb-2">
                                     <button name="action_sync_lotes"
