@@ -327,6 +327,71 @@ class SepedConfig(models.Model):
         }
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Diagnóstico: Vista Previa de Precios
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def action_preview_prices(self):
+        """
+        Genera un reporte de texto mostrando qué precios se enviarían a SEPED
+        para los primeros 20 productos. No llama a la API — solo sirve para
+        validar el mapeo de listas de precio configurado.
+
+        :returns: str con el reporte formateado
+        """
+        self.ensure_one()
+        products = self.env['product.product'].search([
+            ('active', '=', True),
+            ('sale_ok', '=', True),
+        ], limit=20)
+
+        if not products:
+            return '⚠ No se encontraron productos activos para previsualizar.'
+
+        # Encabezado con las listas configuradas
+        def pl_name(field_name):
+            pl = getattr(self, field_name)
+            return pl.name if pl else '(lst_price base)'
+
+        lines = [
+            '═' * 60,
+            '  VISTA PREVIA DE PRECIOS → SEPED',
+            '═' * 60,
+            '  precio1 : %s' % pl_name('pricelist_precio1_id'),
+            '  precio2 : %s' % pl_name('pricelist_precio2_id'),
+            '  precio3 : %s' % pl_name('pricelist_precio3_id'),
+            '  precio4 : %s' % pl_name('pricelist_precio4_id'),
+            '  precio5 : %s' % pl_name('pricelist_precio5_id'),
+            '─' * 60,
+            '  %-12s %-30s %8s %8s %8s' % ('Código', 'Producto', 'P1', 'P2', 'P3'),
+            '─' * 60,
+        ]
+
+        for prod in products:
+            p1 = (
+                self._get_pricelist_price(self.pricelist_precio1_id, prod)
+                if self.pricelist_precio1_id else prod.lst_price
+            )
+            p2 = self._get_pricelist_price(self.pricelist_precio2_id, prod) if self.pricelist_precio2_id else 0.0
+            p3 = self._get_pricelist_price(self.pricelist_precio3_id, prod) if self.pricelist_precio3_id else 0.0
+            p4 = self._get_pricelist_price(self.pricelist_precio4_id, prod) if self.pricelist_precio4_id else 0.0
+            p5 = self._get_pricelist_price(self.pricelist_precio5_id, prod) if self.pricelist_precio5_id else 0.0
+
+            code = (prod.default_code or str(prod.id))[:12]
+            name = (prod.name or '')[:30]
+            lines.append('  %-12s %-30s %8.2f %8.2f %8.2f' % (code, name, p1, p2, p3))
+            if p4 or p5:
+                lines.append('  %43s p4=%-8.2f p5=%-8.2f' % ('', p4, p5))
+
+        lines += [
+            '─' * 60,
+            '  Total productos mostrados: %d (máx. 20)' % len(products),
+            '  ⚠ Estos valores son solo una previsualización local.',
+            '  No se envió ningún dato a SEPED.',
+            '═' * 60,
+        ]
+        return '\n'.join(lines)
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Sincronización de Productos (Full Sync)
     # ─────────────────────────────────────────────────────────────────────────
 
