@@ -105,6 +105,34 @@ class SepedConfig(models.Model):
         readonly=True,
     )
 
+    # ── Mapeo de Listas de Precio → Niveles SEPED ────────────────────────────
+    pricelist_precio1_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio1',
+        help='Pricelist de Odoo que se enviará como precio1 a SEPED. '
+             'Si no se configura, se usa el precio de venta base (lst_price).',
+    )
+    pricelist_precio2_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio2',
+        help='Pricelist de Odoo que se enviará como precio2 a SEPED.',
+    )
+    pricelist_precio3_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio3',
+        help='Pricelist de Odoo que se enviará como precio3 a SEPED.',
+    )
+    pricelist_precio4_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio4',
+        help='Pricelist de Odoo que se enviará como precio4 a SEPED.',
+    )
+    pricelist_precio5_id = fields.Many2one(
+        comodel_name='product.pricelist',
+        string='Lista de Precio → precio5',
+        help='Pricelist de Odoo que se enviará como precio5 a SEPED.',
+    )
+
     # ── Configuración de pedidos ──────────────────────────────────────────────
     order_limit = fields.Integer(
         string='Límite de Pedidos por Consulta',
@@ -142,6 +170,26 @@ class SepedConfig(models.Model):
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         }
+
+    def _get_pricelist_price(self, pricelist, product):
+        """
+        Calcula el precio de un producto según una lista de precio (Odoo 17).
+
+        :param pricelist: record de product.pricelist
+        :param product: record de product.product
+        :returns: float con el precio calculado; lst_price como fallback ante error inesperado
+        """
+        if not pricelist or not product:
+            return 0.0
+        try:
+            return pricelist._get_product_price(product, 1.0)
+        except Exception:
+            _logger.warning(
+                'SEPED _get_pricelist_price: no se pudo calcular precio '
+                'para producto %s en pricelist %s, usando lst_price.',
+                product.display_name, pricelist.name,
+            )
+            return product.lst_price
 
     def _make_request(self, method, endpoint, payload=None):
         """
@@ -303,12 +351,27 @@ class SepedConfig(models.Model):
                 taxes = prod.taxes_id or prod.product_tmpl_id.taxes_id
                 iva_val = taxes[0].amount if taxes else 0.0
 
+                # ── Precios desde listas de precio configuradas ──────────────
+                precio1 = (
+                    self._get_pricelist_price(self.pricelist_precio1_id, prod)
+                    if self.pricelist_precio1_id
+                    else prod.lst_price
+                )
+                precio2 = self._get_pricelist_price(self.pricelist_precio2_id, prod) if self.pricelist_precio2_id else 0.0
+                precio3 = self._get_pricelist_price(self.pricelist_precio3_id, prod) if self.pricelist_precio3_id else 0.0
+                precio4 = self._get_pricelist_price(self.pricelist_precio4_id, prod) if self.pricelist_precio4_id else 0.0
+                precio5 = self._get_pricelist_price(self.pricelist_precio5_id, prod) if self.pricelist_precio5_id else 0.0
+
                 item = {
                     'codprod': prod.default_code or str(prod.id),
                     'barra': prod.barcode or '',
                     'desprod': (prod.name or '')[:200],
                     'cantidad': prod.qty_available,
-                    'precio1': prod.lst_price,
+                    'precio1': precio1,
+                    'precio2': precio2,
+                    'precio3': precio3,
+                    'precio4': precio4,
+                    'precio5': precio5,
                     # Categoría — mismo codcat que se envía en action_sync_categories
                     'codcat': str(prod.categ_id.id) if prod.categ_id else '',
                     # Campos finales validados con soporte técnico de SEPED
