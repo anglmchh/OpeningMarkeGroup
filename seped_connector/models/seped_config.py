@@ -560,8 +560,11 @@ class SepedConfig(models.Model):
         self.ensure_one()
         Partner = self.env['res.partner']
         clients = Partner.search([
-            '|', ('customer_rank', '>', 0), ('is_company', '=', True),
-            ('active', '=', True),
+            '&', ('active', '=', True),
+            '|', '|',
+                ('customer_rank', '>', 0),
+                ('is_company', '=', True),
+                ('commercial_partner_id.customer_rank', '>', 0)
         ])
 
         if not clients:
