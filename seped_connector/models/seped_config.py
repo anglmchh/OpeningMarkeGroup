@@ -1439,17 +1439,16 @@ class SepedConfig(models.Model):
 
             cantidad = float(ren.get('cantidad') or 1.0)
 
-            # Impuesto: buscar por porcentaje si iva > 0
+            # Impuesto: buscar por porcentaje (incluyendo 0% para Exentos)
             tax_ids = []
             iva_pct = float(ren.get('iva') or 0.0)
-            if iva_pct > 0:
-                tax = Tax.search([
-                    ('type_tax_use', '=', 'sale'),
-                    ('amount', '=', iva_pct),
-                    ('amount_type', '=', 'percent'),
-                ], limit=1)
-                if tax:
-                    tax_ids = [(4, tax.id)]
+            tax = Tax.search([
+                ('type_tax_use', '=', 'sale'),
+                ('amount', '=', iva_pct),
+                ('amount_type', '=', 'percent'),
+            ], limit=1)
+            if tax:
+                tax_ids = [(4, tax.id)]
 
             line_vals = {
                 'product_id': product.id,
